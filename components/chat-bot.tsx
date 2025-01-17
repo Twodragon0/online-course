@@ -1,0 +1,512 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { MessageSquare, Loader2, X, Copy, Check } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ChatMessage, MessageCategory } from '@/types/chat';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { Resizable } from 're-resizable';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export function ChatBot() {
+  const DEFAULT_SIZE = {
+    width: typeof window !== 'undefined' ? 
+      window.innerWidth < 640 ? '95vw' : '450px' : '450px',
+    height: typeof window !== 'undefined' ? 
+      window.innerWidth < 640 ? '90vh' : '600px' : '600px'
+  };
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [showIcon, setShowIcon] = useState(false);
+  const [hasShaken, setHasShaken] = useState(false);
+  const [size, setSize] = useState(DEFAULT_SIZE);
+
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      content: '해당 DevSecOps & 클라우드 보안 온라인 코스에 대해 궁금하신 점이 있으신가요?',
+      role: 'assistant',
+      category: 'general',
+      timestamp: new Date(),
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [thinkingMessage, setThinkingMessage] = useState('');
+
+  const [recommendedQuestions, setRecommendedQuestions] = useState<string[]>([
+    "🔐 클라우드 보안 과정의 선수 지식이 궁금합니다",
+    "💼 과정 수료 후 진로 방향이 궁금합니다"
+  ]);
+
+  const thinkingStates = [
+    "질문을 분석하고 있습니다...",
+    "관련 정보를 검색하고 있습니다...",
+    "답변을 생성하고 있습니다..."
+  ];
+
+  useEffect(() => {
+    let currentIndex = 0;
+    let interval: NodeJS.Timeout;
+
+    if (isLoading) {
+      interval = setInterval(() => {
+        setThinkingMessage(thinkingStates[currentIndex]);
+        currentIndex = (currentIndex + 1) % thinkingStates.length;
+      }, 2000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoading]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowIcon(true);
+      setHasShaken(true);
+      setTimeout(() => setHasShaken(false), 1000);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const categorizeMessage = (content: string): MessageCategory => {
+    // 간단한 키워드 기반 분류
+    const keywords = {
+      technical: ['code', 'error', 'bug', 'debug', 'implementation'],
+      security: ['security', 'authentication', 'authorization', 'vulnerability'],
+      devops: ['deploy', 'pipeline', 'ci/cd', 'infrastructure'],
+      programming: ['function', 'class', 'variable', 'algorithm'],
+    };
+
+    for (const [category, words] of Object.entries(keywords)) {
+      if (words.some(word => content.toLowerCase().includes(word))) {
+        return category as MessageCategory;
+      }
+    }
+    return 'general';
+  };
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const category = categorizeMessage(input);
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: input,
+      role: 'user',
+      category,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    setThinkingMessage(thinkingStates[0]);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: input,
+          category,
+          sessionId: localStorage.getItem('chatSessionId') || Date.now().toString(),
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const assistantMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: data.response,
+        role: 'assistant',
+        category,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        content: "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.",
+        role: 'assistant',
+        category: 'error',
+        timestamp: new Date(),
+      }]);
+    } finally {
+      setIsLoading(false);
+      setThinkingMessage('');
+    }
+  };
+
+  // 복사 기능
+  const handleCopyMessage = async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setMessages(messages.map(msg => 
+        msg.id === messageId ? { ...msg, isCopied: true } : msg
+      ));
+      toast.success('텍스트가 복사되었습니다');
+      setTimeout(() => {
+        setMessages(messages.map(msg => 
+          msg.id === messageId ? { ...msg, isCopied: false } : msg
+        ));
+      }, 2000);
+    } catch (err) {
+      toast.error('복사에 실패했습니다');
+    }
+  };
+
+  // 메시지 포맷팅
+  const formatMessage = (content: string, isAssistant: boolean) => {
+    if (!isAssistant) return content;
+    
+    // 코드 블록 패턴 매칭을 위한 정규식
+    const codeBlockPattern = /```(?:(\w+)\n)?([\s\S]*?)```/g;
+    const urlPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+    
+    // 코드 블록과 URL을 HTML로 변환
+    let formattedContent = content
+      .replace(codeBlockPattern, (match, language, code) => {
+        const langClass = language ? ` language-${language}` : '';
+        const langLabel = language ? 
+          `<div class="absolute top-2 right-2 text-xs text-muted-foreground bg-background/90 px-2 py-1 rounded-md">${language}</div>` : '';
+        return `
+          <pre class="relative rounded-lg bg-muted/50 p-4 my-3">
+            ${langLabel}
+            <code class="block text-sm font-mono${langClass}">${code.trim()}</code>
+          </pre>
+        `;
+      })
+      .replace(urlPattern, 
+        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 underline decoration-dotted underline-offset-4 transition-colors">$1</a>'
+      );
+
+    return (
+      <div 
+        className="prose prose-sm dark:prose-invert max-w-none"
+        dangerouslySetInnerHTML={{ __html: formattedContent }}
+      />
+    );
+  };
+
+  const handleQuestionClick = async (question: string) => {
+    if (isLoading) return; // 이미 로딩 중이면 중복 실행 방지
+
+    const category = categorizeMessage(question);
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: question,
+      role: 'user',
+      category,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    setThinkingMessage(thinkingStates[0]);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: question,
+          category,
+          sessionId: localStorage.getItem('chatSessionId') || Date.now().toString(),
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const assistantMessage: ChatMessage = {
+        id: Date.now().toString(),
+        content: data.response,
+        role: 'assistant',
+        category,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        content: "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.",
+        role: 'assistant',
+        category: 'error',
+        timestamp: new Date(),
+      }]);
+    } finally {
+      setIsLoading(false);
+      setThinkingMessage('');
+    }
+  };
+
+  // 추천 질문 컴포넌트
+  const RecommendedQuestions = ({ questions, onQuestionClick }: {
+    questions: string[];
+    onQuestionClick: (question: string) => void;
+  }) => (
+    <div className="flex justify-start w-full mt-2">
+      <div className="bg-accent/10 dark:bg-accent/20 p-4 rounded-2xl rounded-tl-none mr-12 w-[85%]">
+        <p className="text-sm font-medium mb-3 text-primary">💡 추천 질문</p>
+        <div className="space-y-2">
+          {questions.map((question, index) => (
+            <Button
+              key={index}
+              variant="ghost"
+              className={cn(
+                "w-full justify-start text-sm h-auto py-3 px-4",
+                "hover:bg-accent/20 dark:hover:bg-accent/30",
+                "transition-colors rounded-lg",
+                "whitespace-normal text-left break-words",
+                "flex items-start gap-2",
+                isLoading && "opacity-50 cursor-not-allowed" // 로딩 중일 때 비활성화 스타일
+              )}
+              onClick={() => handleQuestionClick(question)}
+              disabled={isLoading} // 로딩 중일 때 클릭 방지
+            >
+              <span className="text-primary flex-shrink-0">🔹</span>
+              <span className="text-foreground/90">{question}</span>
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // 추천 질문 생성 함수 수정
+  const generateRecommendedQuestions = useCallback(async (content: string) => {
+    try {
+      const response = await fetch('/api/related-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: content }),
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch questions');
+      const data = await response.json();
+      setRecommendedQuestions(data.questions);
+    } catch (error) {
+      console.error('Error generating questions:', error);
+      // 기본 추천 질문 설정
+      if (content.toLowerCase().includes('devsecops')) {
+        setRecommendedQuestions([
+          "🔄 CI/CD 파이프라인에 어떤 보안 도구들을 통합할 수 있나요?",
+          "🛡️ 컨테이너 보안을 위한 구체적인 방법이 궁금합니다."
+        ]);
+      } else if (content.toLowerCase().includes('ai')) {
+        setRecommendedQuestions([
+          "🎯 AI 기반 콘텐츠 제작의 실제 워크플로우가 궁금합니다.",
+          "📊 성과 분석을 위한 AI 도구 활용 방법을 알려주세요."
+        ]);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        generateRecommendedQuestions(lastMessage.content);
+      }
+    }
+  }, [messages, generateRecommendedQuestions]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSize(DEFAULT_SIZE);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) {
+    return (
+      <motion.div
+        animate={hasShaken ? {
+          x: [0, -5, 5, -5, 5, 0], // 좌우 진동
+        } : {}}
+        transition={hasShaken ? {
+          duration: 0.5,
+          ease: "easeInOut",
+        } : {}}
+        className="fixed bottom-4 right-4"
+      >
+        <Button
+          onClick={() => setIsOpen(true)}
+          className={cn(
+            "rounded-full w-12 h-12 p-0",
+            "shadow-lg hover:shadow-xl",
+            "transition-all duration-200"
+          )}
+        >
+          <MessageSquare className="h-6 w-6" />
+        </Button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <Resizable
+      size={size}
+      minHeight={400}
+      minWidth={300}
+      maxHeight="90vh"
+      maxWidth="95vw"
+      onResizeStop={(e, direction, ref, d) => {
+        setSize({
+          width: size.width + d.width,
+          height: size.height + d.height,
+        });
+      }}
+      enable={{
+        top: true,
+        right: true,
+        bottom: true,
+        left: true,
+        topRight: true,
+        bottomRight: true,
+        bottomLeft: true,
+        topLeft: true,
+      }}
+      className="fixed bottom-4 right-4 z-50"
+      style={{ position: 'fixed' }}
+    >
+      <Card className="w-full h-full flex flex-col shadow-lg">
+        <div className="p-4 border-b flex items-center justify-between cursor-move">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            <h3 className="font-semibold">AI Assistant</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground">
+              Powered by DeepSeek v3
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1 p-4">
+          <div className="space-y-3">
+            {messages.map((message) => (
+              <div key={message.id}>
+                <div
+                  className={cn(
+                    "relative group",
+                    message.role === 'user' ? "flex justify-end" : "flex justify-start"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "p-4 max-w-[85%] shadow-sm break-words",
+                      "sm:max-w-[75%] md:max-w-[65%]",
+                      message.role === 'user'
+                        ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none ml-12"
+                        : cn(
+                            "bg-muted rounded-2xl rounded-tl-none mr-12",
+                            "hover:bg-muted/90 dark:hover:bg-muted/70",
+                            "transition-colors duration-200"
+                          ),
+                      "prose-pre:bg-muted/50 prose-pre:p-4 prose-pre:rounded-lg",
+                      "prose-code:text-sm prose-code:font-mono",
+                      "dark:prose-pre:bg-muted/30"
+                    )}
+                  >
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {formatMessage(message.content, message.role === 'assistant')}
+                    </div>
+
+                    <div className={cn(
+                      "flex items-center gap-2 mt-2 text-xs",
+                      message.role === 'user' ? "justify-end" : "justify-between"
+                    )}>
+                      <span className="opacity-70">
+                        {message.category} • {new Date(message.timestamp).toLocaleTimeString()}
+                      </span>
+                      {message.role === 'assistant' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleCopyMessage(message.content, message.id)}
+                        >
+                          {message.isCopied ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 추천 질문은 별도의 말풍선으로 표시 */}
+                {message.role === 'assistant' && (
+                  <RecommendedQuestions
+                    questions={recommendedQuestions}
+                    onQuestionClick={handleQuestionClick}
+                  />
+                )}
+              </div>
+            ))}
+            
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-muted p-4 rounded-2xl rounded-tl-none mr-12 flex flex-col items-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">
+                    {thinkingMessage}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+
+        <div className="p-4 border-t flex flex-col gap-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage();
+            }}
+            className="flex gap-2"
+          >
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="질문을 입력하세요..."
+              disabled={isLoading}
+            />
+            <Button type="submit" disabled={isLoading}>
+              전송
+            </Button>
+          </form>
+          <p className="text-[10px] text-muted-foreground text-center">
+            대화 내용은 서비스 개선을 위해 개인정보보호법에 따라 안전하게 저장됩니다
+          </p>
+        </div>
+      </Card>
+    </Resizable>
+  );
+} 

@@ -1,0 +1,23 @@
+### ShadCN Components
+
+- All UI components must use ShadCN
+- Component usage path should be: `/components/ui`
+- Component installation command: `npx shadcn@latest add [component-name]`
+  - Note: `npx shadcn-ui@latest add` is deprecated. Use `npx shadcn@latest add` instead
+
+### Icons
+
+- All icons must use Lucide React
+- Icon import format: `import { IconName } from "lucide-react"`
+- Example: `import { Search, Menu } from "lucide-react"`
+
+### Component Structure
+
+- Components should be placed under `/components`
+- UI components should be placed under `/components/ui`
+- Page components should be placed under `/app`
+
+### Best Practices
+
+- TypeScript strict mode must be enabled
+- Components must be reusable 
