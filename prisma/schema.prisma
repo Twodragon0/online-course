@@ -34,27 +34,37 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+enum SubscriptionStatus {
+  active
+  inactive
+}
+
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  chats         Chat[]
-  subscription  Subscription?
+  id                  String    @id @default(cuid())
+  name                String?
+  email               String?   @unique
+  emailVerified       DateTime?
+  image               String?
+  stripeCustomerId    String?   @unique
+  paypalOrderId       String?   @unique
+  paypalSubscriptionId String?  @unique
+  subscriptionStatus  SubscriptionStatus @default(inactive)
+  accounts            Account[]
+  sessions           Session[]
+  chats              Chat[]
+  subscription       Subscription?
+  password            String?
 }
 
 model Course {
   id          String   @id @default(cuid())
   title       String
-  description String
-  imageUrl    String?
+  description String?
   price       Float
+  imageUrl    String?
+  videos      Video[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  videos      Video[]
 }
 
 model Video {
@@ -65,6 +75,7 @@ model Video {
   courseId    String
   course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   chats       Chat[]
+  position    Int      @default(1)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

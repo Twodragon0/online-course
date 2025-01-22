@@ -12,7 +12,12 @@ import { toast } from 'sonner';
 import { Resizable } from 're-resizable';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export function ChatBot() {
+interface ChatBotProps {
+  videoId?: string;
+  isEmbedded?: boolean;
+}
+
+export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
   const DEFAULT_SIZE = {
     width: typeof window !== 'undefined' ? 
       window.innerWidth < 640 ? '95vw' : '450px' : '450px',
@@ -20,7 +25,7 @@ export function ChatBot() {
       window.innerWidth < 640 ? '90vh' : '600px' : '600px'
   };
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(isEmbedded);
   const [showIcon, setShowIcon] = useState(false);
   const [hasShaken, setHasShaken] = useState(false);
   const [size, setSize] = useState(DEFAULT_SIZE);
@@ -66,13 +71,15 @@ export function ChatBot() {
   }, [isLoading]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowIcon(true);
-      setHasShaken(true);
-      setTimeout(() => setHasShaken(false), 1000);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!isEmbedded) {
+      const timer = setTimeout(() => {
+        setShowIcon(true);
+        setHasShaken(true);
+        setTimeout(() => setHasShaken(false), 1000);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isEmbedded]);
 
   const categorizeMessage = (content: string): MessageCategory => {
     // 간단한 키워드 기반 분류
@@ -171,12 +178,15 @@ export function ChatBot() {
   const formatMessage = (content: string, isAssistant: boolean) => {
     if (!isAssistant) return content;
     
+    // 볼드 텍스트 패턴 매칭을 위한 정규식
+    const boldPattern = /\*\*(.*?)\*\*/g;
     // 코드 블록 패턴 매칭을 위한 정규식
     const codeBlockPattern = /```(?:(\w+)\n)?([\s\S]*?)```/g;
     const urlPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
     
-    // 코드 블록과 URL을 HTML로 변환
+    // 볼드 텍스트, 코드 블록, URL을 HTML로 변환
     let formattedContent = content
+      .replace(boldPattern, '<strong class="font-bold">$1</strong>')
       .replace(codeBlockPattern, (match, language, code) => {
         const langClass = language ? ` language-${language}` : '';
         const langLabel = language ? 
@@ -194,7 +204,7 @@ export function ChatBot() {
 
     return (
       <div 
-        className="prose prose-sm dark:prose-invert max-w-none"
+        className="prose prose-sm dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
         dangerouslySetInnerHTML={{ __html: formattedContent }}
       />
     );
@@ -334,11 +344,11 @@ export function ChatBot() {
     }
   }, [isOpen]);
 
-  if (!isOpen) {
+  if (!isOpen && !isEmbedded) {
     return (
       <motion.div
         animate={hasShaken ? {
-          x: [0, -5, 5, -5, 5, 0], // 좌우 진동
+          x: [0, -5, 5, -5, 5, 0],
         } : {}}
         transition={hasShaken ? {
           duration: 0.5,
@@ -358,6 +368,135 @@ export function ChatBot() {
         </Button>
       </motion.div>
     );
+  }
+
+  const chatContent = (
+    <Card className={cn(
+      "flex flex-col shadow-lg",
+      isEmbedded ? "w-full h-full" : "w-full h-full"
+    )}>
+      {!isEmbedded && (
+        <div className="p-4 border-b flex items-center justify-between cursor-move">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            <h3 className="font-semibold">AI Assistant</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground">
+              Powered by DeepSeek v3
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-3">
+          {messages.map((message) => (
+            <div key={message.id}>
+              <div
+                className={cn(
+                  "relative group",
+                  message.role === 'user' ? "flex justify-end" : "flex justify-start"
+                )}
+              >
+                <div
+                  className={cn(
+                    "p-4 max-w-[85%] shadow-sm break-words",
+                    "sm:max-w-[75%] md:max-w-[65%]",
+                    message.role === 'user'
+                      ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none ml-12"
+                      : cn(
+                          "bg-muted rounded-2xl rounded-tl-none mr-12",
+                          "hover:bg-muted/90 dark:hover:bg-muted/70",
+                          "transition-colors duration-200"
+                        )
+                  )}
+                >
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {formatMessage(message.content, message.role === 'assistant')}
+                  </div>
+
+                  <div className={cn(
+                    "flex items-center gap-2 mt-2 text-xs",
+                    message.role === 'user' ? "justify-end" : "justify-between"
+                  )}>
+                    <span className="opacity-70">
+                      {message.category} • {new Date(message.timestamp).toLocaleTimeString()}
+                    </span>
+                    {message.role === 'assistant' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleCopyMessage(message.content, message.id)}
+                      >
+                        {message.isCopied ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {message.role === 'assistant' && (
+                <RecommendedQuestions
+                  questions={recommendedQuestions}
+                  onQuestionClick={handleQuestionClick}
+                />
+              )}
+            </div>
+          ))}
+          
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-muted p-4 rounded-2xl rounded-tl-none mr-12 flex flex-col items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <p className="text-sm text-muted-foreground animate-pulse">
+                  {thinkingMessage}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      <div className="p-4 border-t flex flex-col gap-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage();
+          }}
+          className="flex gap-2"
+        >
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="질문을 입력하세요..."
+            disabled={isLoading}
+          />
+          <Button type="submit" disabled={isLoading}>
+            전송
+          </Button>
+        </form>
+        <p className="text-[10px] text-muted-foreground text-center">
+          대화 내용은 서비스 개선을 위해 개인정보보호법에 따라 안전하게 저장됩니다
+        </p>
+      </div>
+    </Card>
+  );
+
+  if (isEmbedded) {
+    return chatContent;
   }
 
   return (
@@ -386,127 +525,7 @@ export function ChatBot() {
       className="fixed bottom-4 right-4 z-50"
       style={{ position: 'fixed' }}
     >
-      <Card className="w-full h-full flex flex-col shadow-lg">
-        <div className="p-4 border-b flex items-center justify-between cursor-move">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            <h3 className="font-semibold">AI Assistant</h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground">
-              Powered by DeepSeek v3
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-3">
-            {messages.map((message) => (
-              <div key={message.id}>
-                <div
-                  className={cn(
-                    "relative group",
-                    message.role === 'user' ? "flex justify-end" : "flex justify-start"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "p-4 max-w-[85%] shadow-sm break-words",
-                      "sm:max-w-[75%] md:max-w-[65%]",
-                      message.role === 'user'
-                        ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none ml-12"
-                        : cn(
-                            "bg-muted rounded-2xl rounded-tl-none mr-12",
-                            "hover:bg-muted/90 dark:hover:bg-muted/70",
-                            "transition-colors duration-200"
-                          ),
-                      "prose-pre:bg-muted/50 prose-pre:p-4 prose-pre:rounded-lg",
-                      "prose-code:text-sm prose-code:font-mono",
-                      "dark:prose-pre:bg-muted/30"
-                    )}
-                  >
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {formatMessage(message.content, message.role === 'assistant')}
-                    </div>
-
-                    <div className={cn(
-                      "flex items-center gap-2 mt-2 text-xs",
-                      message.role === 'user' ? "justify-end" : "justify-between"
-                    )}>
-                      <span className="opacity-70">
-                        {message.category} • {new Date(message.timestamp).toLocaleTimeString()}
-                      </span>
-                      {message.role === 'assistant' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleCopyMessage(message.content, message.id)}
-                        >
-                          {message.isCopied ? (
-                            <Check className="h-3 w-3" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 추천 질문은 별도의 말풍선으로 표시 */}
-                {message.role === 'assistant' && (
-                  <RecommendedQuestions
-                    questions={recommendedQuestions}
-                    onQuestionClick={handleQuestionClick}
-                  />
-                )}
-              </div>
-            ))}
-            
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-muted p-4 rounded-2xl rounded-tl-none mr-12 flex flex-col items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <p className="text-sm text-muted-foreground animate-pulse">
-                    {thinkingMessage}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-
-        <div className="p-4 border-t flex flex-col gap-2">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendMessage();
-            }}
-            className="flex gap-2"
-          >
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="질문을 입력하세요..."
-              disabled={isLoading}
-            />
-            <Button type="submit" disabled={isLoading}>
-              전송
-            </Button>
-          </form>
-          <p className="text-[10px] text-muted-foreground text-center">
-            대화 내용은 서비스 개선을 위해 개인정보보호법에 따라 안전하게 저장됩니다
-          </p>
-        </div>
-      </Card>
+      {chatContent}
     </Resizable>
   );
 } 

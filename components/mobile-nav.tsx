@@ -24,11 +24,11 @@ export function MobileNav() {
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-[300px] sm:w-[400px] p-0">
-        <div className="flex flex-col h-full">
+        <nav className="flex flex-col h-full">
           <div className="px-6 py-4 border-b">
             <h2 className="text-lg font-semibold">OnlineCourse</h2>
           </div>
-          <nav className="flex-1 px-3 py-2">
+          <div className="flex-1 px-3 py-2">
             <div className="space-y-1">
               {menuItems.map((item) => (
                 <Link
@@ -44,13 +44,13 @@ export function MobileNav() {
                 </Link>
               ))}
             </div>
-          </nav>
+          </div>
           <div className="px-6 py-4 border-t">
             <Button variant="outline" className="w-full" asChild>
               <Link href="/logout">Log out</Link>
             </Button>
           </div>
-        </div>
+        </nav>
       </SheetContent>
     </Sheet>
   );

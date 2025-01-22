@@ -1,39 +1,34 @@
 #!/bin/bash
 
-# Docker 데몬 실행 확인
-while ! docker system info > /dev/null 2>&1; do
-  echo "Waiting for Docker daemon to start..."
-  sleep 1
-done
-
 # 환경 변수 로드
-if [ ! -f .env.production ]; then
-    echo "Creating .env.production from .env"
-    cp .env .env.production
-fi
-
 set -a
 source .env.production
 set +a
 
-# GCP 프로젝트 ID 설정
+# 프로젝트 ID 설정
 PROJECT_ID="online-course-447813"
 REGION="asia-northeast3"
+SERVICE_NAME="online-course"
 
-# Docker 이미지 태그에 타임스탬프 추가
-IMAGE_TAG="asia.gcr.io/$PROJECT_ID/online-course:$(date +%Y%m%d-%H%M%S)"
+# 이미지 태그 생성 (타임스탬프 포함)
+IMAGE_TAG="asia.gcr.io/$PROJECT_ID/$SERVICE_NAME:$(date +%Y%m%d-%H%M%S)"
 
-echo "Building and pushing to $IMAGE_TAG"
+echo "Building Docker image..."
+docker build -t $IMAGE_TAG .
 
-# 컨테이너 이미지 빌드 및 푸시
-docker build -t $IMAGE_TAG . && \
-docker push $IMAGE_TAG && \
+echo "Pushing to Container Registry..."
+docker push $IMAGE_TAG
 
-# Cloud Run 배포
-gcloud run deploy online-course \
+echo "Deploying to Cloud Run..."
+gcloud run deploy $SERVICE_NAME \
   --image $IMAGE_TAG \
   --platform managed \
   --region $REGION \
   --project $PROJECT_ID \
   --allow-unauthenticated \
-  --set-env-vars "DATABASE_URL=$DATABASE_URL,NEXTAUTH_URL=$NEXTAUTH_URL"
+  --set-env-vars "DATABASE_URL=$DATABASE_URL" \
+  --set-env-vars "NEXTAUTH_URL=$NEXTAUTH_URL" \
+  --set-env-vars "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" \
+  --set-env-vars "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" \
+  --set-env-vars "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" \
+  --set-env-vars "STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY"

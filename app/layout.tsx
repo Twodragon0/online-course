@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Providers } from "@/components/providers";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
 import { ChatBot } from "@/components/chat-bot";
 
@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Online Course Platform",
-  description: "Transform your business with our online courses and AI-powered learning.",
+  description: "Learn DevSecOps and AI",
 };
 
 export default function RootLayout({
@@ -29,9 +29,7 @@ export default function RootLayout({
         >
           <Providers>
             <Navbar />
-            <main className="pt-[73px]">
-              {children}
-            </main>
+            <main>{children}</main>
             <ChatBot />
           </Providers>
         </ThemeProvider>
