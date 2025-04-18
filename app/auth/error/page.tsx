@@ -1,16 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, Home, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-// Let's check if we need to install the Card component
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function AuthErrorPage() {
+// 로딩 상태를 표시할 컴포넌트
+function ErrorPageSkeleton() {
+  return (
+    <div className="flex min-h-[80vh] items-center justify-center px-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-32" />
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
+
+// 실제 에러 내용을 표시할 컴포넌트
+function ErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams?.get("error") || null;
   
@@ -30,6 +51,28 @@ export default function AuthErrorPage() {
         return "Access denied. You do not have permission to sign in.";
       case "Verification":
         return "The verification link has expired or has already been used.";
+      case "OAuthSignin":
+        return "Error occurred during Google sign-in initiation. Please try again later.";
+      case "OAuthCallback":
+        return "Error occurred during Google sign-in callback. This might be due to incorrect redirect URI configuration.";
+      case "OAuthCreateAccount":
+        return "Could not create an account with Google credentials. Please try again or contact support.";
+      case "EmailCreateAccount":
+        return "Could not create an account with the provided email. Please try again.";
+      case "SessionRequired":
+        return "You need to be signed in to access this page.";
+      case "UserNotFound":
+        return "User not found. Please sign up first.";
+      case "EmailSignin":
+        return "The email sign-in failed. Please check your email address.";
+      case "CredentialsSignin":
+        return "The sign-in with credentials failed. Please check your inputs.";
+      case "adapter_error_getUserByAccount":
+        return "Database error occurred during sign-in. This is likely a temporary issue with our database connection. Please try again later.";
+      case "OAUTH_CALLBACK_HANDLER_ERROR":
+        return "Failed to process Google login. This might be due to incorrect Google OAuth configuration or database issues. Please try again later.";
+      case "redirect_uri_mismatch":
+        return "Google OAuth configuration error: The redirect URI mismatch. Please contact support.";
       default:
         return "An unexpected error occurred during authentication. Please try again later.";
     }
@@ -69,5 +112,14 @@ export default function AuthErrorPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+// 메인 페이지 컴포넌트
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<ErrorPageSkeleton />}>
+      <ErrorContent />
+    </Suspense>
   );
 } 

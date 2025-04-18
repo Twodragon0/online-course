@@ -13,7 +13,7 @@ interface VideoCardProps {
 }
 
 export function VideoCard({ id, title, description, driveFileId }: VideoCardProps) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [embedError, setEmbedError] = useState(false);
 
@@ -51,7 +51,8 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
     setIsLoading(false);
   };
 
-  if (!session) {
+  // Check if user is authenticated - use status instead of checking session directly
+  if (status === 'unauthenticated') {
     return (
       <div className="rounded-lg border p-6">
         <h3 className="text-xl font-semibold">{title}</h3>

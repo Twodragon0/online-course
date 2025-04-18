@@ -200,6 +200,20 @@ const sampleData = [
     isFolder: false,
     type: 'pdf'
   },
+  {
+    id: 'cloud-security-supplementary',
+    title: '클라우드 보안 보충 자료',
+    description: '클라우드 환경 보안 관련 보충 자료 및 추가 학습 리소스',
+    driveFileId: '1kC8HPScaJCPy7qoZgXr_k8mfLuLKQqq5',
+    courseId: 'cloud-security-course',
+    position: 4,
+    course: {
+      id: 'cloud-security-course',
+      title: '클라우드 보안 가이드'
+    },
+    isFolder: false,
+    type: 'pdf'
+  },
   
   // 2023 클라우드 보안 가이드 PDF 파일
   {

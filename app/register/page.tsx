@@ -1,10 +1,30 @@
 'use client';
 
-import React from "react";
+import React, { Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const RegisterPage: React.FC = () => {
+// 로딩 상태를 위한 스켈레톤 컴포넌트
+function RegisterSkeleton() {
+  return (
+    <div className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <Skeleton className="h-8 w-56 mx-auto" />
+        <Skeleton className="h-4 w-40 mx-auto mt-2" />
+      </div>
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-background px-4 py-8 shadow sm:rounded-lg sm:px-10">
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 실제 컨텐츠를 표시하는 컴포넌트
+function RegisterContent() {
   const searchParams = useSearchParams();
   const plan = searchParams?.get('plan');
 
@@ -30,6 +50,15 @@ const RegisterPage: React.FC = () => {
         </div>
       </div>
     </div>
+  );
+}
+
+// 메인 페이지 컴포넌트
+const RegisterPage: React.FC = () => {
+  return (
+    <Suspense fallback={<RegisterSkeleton />}>
+      <RegisterContent />
+    </Suspense>
   );
 }
 

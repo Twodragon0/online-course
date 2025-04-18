@@ -1,20 +1,14 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
+  "functions": {
+    "app/api/chat/route.ts": {
+      "memory": 1024,
+      "maxDuration": 20
+    },
+    "app/api/related-questions/route.ts": {
+      "memory": 1024,
+      "maxDuration": 20
     }
-  ],
-  "github": {
-    "silent": true
   },
-  "env": {
-    "DEEPSEEK_API_KEY": "@deepseek_api_key",
-    "DATABASE_URL": "@database_url",
-    "NEXTAUTH_URL": "https://edu.2twodragon.com",
-    "NEXTAUTH_SECRET": "@nextauth_secret"
-  }
+  "buildCommand": "npm run vercel-build"
 }
