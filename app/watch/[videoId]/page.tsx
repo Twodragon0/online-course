@@ -1,21 +1,22 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import { VideoPlayer } from '@/components/video-player';
 import { ChatBot } from '@/components/chat-bot';
 import { Button } from '@/components/ui/button';
 import { Book } from 'lucide-react';
 
-const prisma = new PrismaClient();
-
+// Define the params type to match Next.js expected interface
 type PageParams = {
   videoId: string;
 };
 
+interface PageProps {
+  params: PageParams;
+}
+
 export default async function VideoPage({ 
   params 
-}: { 
-  params: PageParams
-}) {
+}: PageProps) {
   const video = await prisma.video.findUnique({
     where: {
       id: params.videoId,
@@ -55,9 +56,7 @@ export default async function VideoPage({
 
 export async function generateMetadata({ 
   params 
-}: { 
-  params: PageParams
-}) {
+}: PageProps) {
   const video = await prisma.video.findUnique({
     where: {
       id: params.videoId,

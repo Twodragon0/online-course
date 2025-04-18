@@ -1,15 +1,14 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
+  "functions": {
+    "app/api/chat/route.ts": {
+      "memory": 1024,
+      "maxDuration": 20
+    },
+    "app/api/related-questions/route.ts": {
+      "memory": 1024,
+      "maxDuration": 20
     }
-  ],
-  "github": {
-    "silent": true
-  }
+  },
+  "buildCommand": "npm run vercel-build"
 }

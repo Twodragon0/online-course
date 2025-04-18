@@ -1,5 +1,44 @@
 import { NextResponse } from "next/server";
-import { prisma } from '@/lib/db';
+import prisma from '@/lib/prisma';
+
+// Set a specific runtime config for Vercel
+export const runtime = 'nodejs'; // 'edge' | 'nodejs'
+export const maxDuration = 30; // This is in seconds, only works on pro plans for > 10s
+
+// API 요청에 타임아웃 설정을 추가하는 함수
+async function fetchWithTimeout(url: string, options: RequestInit, timeout = 8000) {
+  // AbortController를 사용하여 요청 타임아웃 구현
+  const controller = new AbortController();
+  const { signal } = controller;
+  
+  // 타임아웃 설정
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      throw new Error('요청 시간이 초과되었습니다.');
+    }
+    
+    throw error;
+  }
+}
+
+// 기본 질문 생성 함수
+function getDefaultQuestions() {
+  return [
+    "💡 이 주제와 관련된 실제 사례가 궁금합니다.",
+    "🔍 더 자세한 기술적인 내용이 알고 싶습니다."
+  ];
+}
 
 export async function POST(req: Request) {
   try {
@@ -83,27 +122,32 @@ export async function POST(req: Request) {
       return questions;
     };
 
-    // DeepSeek API를 통한 질문 생성
-    const generateDeepSeekQuestions = async (content: string): Promise<string[]> => {
+    // 패턴 매칭만 수행하여 질문 생성
+    const patternQuestions = generateDynamicQuestions(response);
+    
+    // 패턴 매칭으로 충분한 질문이 생성되면 바로 반환
+    if (patternQuestions.length >= 2) {
+      return NextResponse.json({ questions: patternQuestions.slice(0, 2) });
+    }
+
+    // 패턴 매칭으로 충분한 질문이 생성되지 않은 경우에만 DeepSeek API 호출 시도
+    // 매우 짧은 타임아웃으로 시도하고, 실패하면 기본 질문 반환
+    try {
+      // DeepSeek API를 통한 질문 생성 (간소화된 버전)
       const apiKey = process.env.DEEPSEEK_API_KEY;
       if (!apiKey) {
-        throw new Error('DeepSeek API key is not configured');
+        // API 키가 없으면 기본 질문 + 패턴 질문으로 응답
+        const finalQuestions = [...patternQuestions, ...getDefaultQuestions()].slice(0, 2);
+        return NextResponse.json({ questions: finalQuestions });
       }
 
-      const prompt = `다음 답변에 대한 적절한 후속 질문 2개를 생성해주세요. 
-      질문은 실무적이고 구체적이어야 하며, 이모지를 포함해야 합니다.
-      
-      답변 내용:
-      ${content}
-      
-      형식:
-      - 각 질문은 한 줄로 작성
-      - 이모지로 시작
-      - 실무적이고 구체적인 내용
-      - 마지막에 물음표 포함`;
+      // 간소화된 프롬프트
+      const shortPrompt = `답변 내용을 바탕으로 후속 질문 2개 생성 (이모지로 시작, 실무적, 구체적, 물음표 끝):\n${response.substring(0, 300)}`;
 
-      try {
-        const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      // 매우 짧은 타임아웃으로 API 호출
+      const promptPromise = fetchWithTimeout(
+        'https://api.deepseek.com/v1/chat/completions',
+        {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -114,65 +158,73 @@ export async function POST(req: Request) {
             messages: [
               {
                 role: "system",
-                content: "당신은 전문적인 질문 생성 도우미입니다. 주어진 답변에 대해 실무적이고 구체적인 후속 질문을 생성합니다."
+                content: "당신은 전문적인 질문 생성 도우미입니다."
               },
               {
                 role: "user",
-                content: prompt
+                content: shortPrompt
               }
             ],
             temperature: 0.7,
-            max_tokens: 200
+            max_tokens: 100,
+            timeout: 5
           })
-        });
+        },
+        8000 // 8초 타임아웃
+      );
 
-        if (!deepseekResponse.ok) {
-          throw new Error('DeepSeek API error');
-        }
+      // 6초 후에는 기본값으로 응답하도록 경쟁
+      const deepseekResponse = await Promise.race([
+        promptPromise,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000))
+      ]);
 
-        const result = await deepseekResponse.json();
-        const generatedQuestions = result.choices[0]?.message?.content
-          .split('\n')
-          .filter((q: string) => q.trim() && q.includes('?'))
-          .slice(0, 2);
-
-        return generatedQuestions;
-      } catch (error) {
-        console.error('DeepSeek API error:', error);
-        return [];
+      // API 응답이 없으면 기본 질문 사용
+      if (!deepseekResponse) {
+        throw new Error('DeepSeek API timeout');
       }
-    };
 
-    // 질문 생성 및 조합
-    const patternQuestions = generateDynamicQuestions(response);
-    
-    if (patternQuestions.length >= 2) {
-      return NextResponse.json({ questions: patternQuestions.slice(0, 2) });
+      // API 응답이 있고 성공적인 경우
+      if (deepseekResponse.ok) {
+        const result = await deepseekResponse.json();
+        const content = result.choices[0]?.message?.content;
+        
+        if (content) {
+          const generatedQuestions = content
+            .split('\n')
+            .filter((q: string) => q.trim() && q.includes('?'))
+            .slice(0, 2);
+          
+          if (generatedQuestions.length > 0) {
+            const combinedQuestions = [...patternQuestions, ...generatedQuestions];
+            const uniqueQuestions = Array.from(new Set(combinedQuestions));
+            return NextResponse.json({ 
+              questions: uniqueQuestions.slice(0, 2),
+              source: "ai" 
+            });
+          }
+        }
+      }
+      
+      // API 응답 처리 중 문제가 있으면 기본 질문 사용
+      throw new Error('Invalid DeepSeek API response');
+      
+    } catch (error) {
+      // 오류 발생 시 패턴 질문 + 기본 질문 사용
+      const fallbackQuestions = [...patternQuestions, ...getDefaultQuestions()].slice(0, 2);
+      return NextResponse.json({ 
+        questions: fallbackQuestions, 
+        fallback: true,
+        source: "pattern" 
+      });
     }
-
-    // 패턴 매칭으로 충분한 질문이 생성되지 않은 경우 DeepSeek 활용
-    const deepseekQuestions = await generateDeepSeekQuestions(response);
-    const combinedQuestions = [...patternQuestions, ...deepseekQuestions];
-
-    // 중복 제거 및 최대 2개 질문 반환
-    const uniqueQuestions = Array.from(new Set(combinedQuestions));
-    const finalQuestions = uniqueQuestions.length >= 2 ? 
-      uniqueQuestions.slice(0, 2) : 
-      [
-        ...uniqueQuestions,
-        "💡 이 주제와 관련된 실제 사례가 궁금합니다.",
-        "🔍 더 자세한 기술적인 내용이 알고 싶습니다."
-      ].slice(0, 2);
-
-    return NextResponse.json({ questions: finalQuestions });
 
   } catch (error) {
     console.error('Error generating related questions:', error);
     return NextResponse.json({
-      questions: [
-        "💡 이 주제와 관련된 실제 사례가 궁금합니다.",
-        "🔍 더 자세한 기술적인 내용이 알고 싶습니다."
-      ]
+      questions: getDefaultQuestions(),
+      fallback: true,
+      source: "default"
     });
   }
 } 

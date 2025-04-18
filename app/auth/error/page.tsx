@@ -51,6 +51,28 @@ function ErrorContent() {
         return "Access denied. You do not have permission to sign in.";
       case "Verification":
         return "The verification link has expired or has already been used.";
+      case "OAuthSignin":
+        return "Error occurred during Google sign-in initiation. Please try again later.";
+      case "OAuthCallback":
+        return "Error occurred during Google sign-in callback. This might be due to incorrect redirect URI configuration.";
+      case "OAuthCreateAccount":
+        return "Could not create an account with Google credentials. Please try again or contact support.";
+      case "EmailCreateAccount":
+        return "Could not create an account with the provided email. Please try again.";
+      case "SessionRequired":
+        return "You need to be signed in to access this page.";
+      case "UserNotFound":
+        return "User not found. Please sign up first.";
+      case "EmailSignin":
+        return "The email sign-in failed. Please check your email address.";
+      case "CredentialsSignin":
+        return "The sign-in with credentials failed. Please check your inputs.";
+      case "adapter_error_getUserByAccount":
+        return "Database error occurred during sign-in. This is likely a temporary issue with our database connection. Please try again later.";
+      case "OAUTH_CALLBACK_HANDLER_ERROR":
+        return "Failed to process Google login. This might be due to incorrect Google OAuth configuration or database issues. Please try again later.";
+      case "redirect_uri_mismatch":
+        return "Google OAuth configuration error: The redirect URI mismatch. Please contact support.";
       default:
         return "An unexpected error occurred during authentication. Please try again later.";
     }

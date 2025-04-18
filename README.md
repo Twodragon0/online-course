@@ -128,3 +128,69 @@ npm run dev
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Troubleshooting Auth Issues
+
+### Google OAuth Errors
+
+#### Redirect URI Mismatch Error
+
+If you encounter a "redirect_uri_mismatch" error:
+
+1. Go to your [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to "APIs & Services" > "Credentials"
+3. Edit your OAuth 2.0 Client ID
+4. Make sure the following redirect URIs are included:
+   - `http://localhost:3000/api/auth/callback/google` (for local development)
+   - `https://your-vercel-domain.vercel.app/api/auth/callback/google` (for production)
+5. The exact URI must match what your application is using
+
+#### Database Connection Errors
+
+If you see errors like "adapter_error_getUserByAccount" or database-related errors:
+
+1. Verify your `DATABASE_URL` is correctly set in your environment variables
+2. Make sure your PostgreSQL database is running and accessible
+3. Check that your database schema matches your Prisma schema
+4. Run Prisma migrations if needed: `npx prisma migrate dev`
+5. For Vercel deployment, ensure the database is accessible from Vercel's servers
+
+#### JWT-Only Mode (No Database)
+
+If you continue to experience database connection issues with NextAuth, you can use JWT-only mode:
+
+1. Edit `app/api/auth/[...nextauth]/route.ts` and remove the Prisma adapter:
+   ```typescript
+   // Remove these imports
+   // import { PrismaAdapter } from "@auth/prisma-adapter";
+   // import { prisma } from "@/lib/db";
+
+   const handler = NextAuth({
+     // Remove the adapter line
+     // adapter: PrismaAdapter(prisma),
+     
+     // Make sure to use JWT strategy
+     session: {
+       strategy: "jwt",
+       maxAge: 30 * 24 * 60 * 60, // 30 days
+     },
+     // ...rest of your config
+   });
+   ```
+
+2. This approach stores session data in cookies rather than a database
+3. Note that some features like linking multiple accounts will not work in JWT-only mode
+
+### JWT Configuration
+
+If session-related errors occur, ensure:
+
+1. `NEXTAUTH_SECRET` is properly set
+2. `NEXTAUTH_URL` matches your application's URL
+
+### General Troubleshooting Steps
+
+1. Check environment variables are correctly set
+2. Review server logs for specific error messages
+3. Ensure Google OAuth credentials are correctly configured
+4. Verify your application can connect to the database
