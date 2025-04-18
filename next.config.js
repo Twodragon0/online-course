@@ -1,5 +1,15 @@
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  reactStrictMode: true,
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'localhost:3001'],
+    },
+  },
+  env: {
+    DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
+  },
   async headers() {
     return [
       {
@@ -22,7 +32,15 @@ const nextConfig = {
             value: '1; mode=block'
           }
         ]
-      }
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+        ],
+      },
     ]
   }
 }
