@@ -7,13 +7,15 @@ import { Book } from 'lucide-react';
 
 const prisma = new PrismaClient();
 
-interface PageProps {
-  params: {
-    videoId: string;
-  };
-}
+type PageParams = {
+  videoId: string;
+};
 
-export default async function VideoPage({ params }: PageProps) {
+export default async function VideoPage({ 
+  params 
+}: { 
+  params: PageParams
+}) {
   const video = await prisma.video.findUnique({
     where: {
       id: params.videoId,
@@ -51,7 +53,11 @@ export default async function VideoPage({ params }: PageProps) {
   );
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ 
+  params 
+}: { 
+  params: PageParams
+}) {
   const video = await prisma.video.findUnique({
     where: {
       id: params.videoId,

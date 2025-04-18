@@ -1,16 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AlertCircle, Home, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-
-// Let's check if we need to install the Card component
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function AuthErrorPage() {
+// 로딩 상태를 표시할 컴포넌트
+function ErrorPageSkeleton() {
+  return (
+    <div className="flex min-h-[80vh] items-center justify-center px-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1">
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-32" />
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
+
+// 실제 에러 내용을 표시할 컴포넌트
+function ErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams?.get("error") || null;
   
@@ -69,5 +90,14 @@ export default function AuthErrorPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+// 메인 페이지 컴포넌트
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={<ErrorPageSkeleton />}>
+      <ErrorContent />
+    </Suspense>
   );
 } 

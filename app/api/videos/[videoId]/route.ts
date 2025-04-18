@@ -1,18 +1,12 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
-type Params = {
-  params: {
-    videoId: string;
-  }
-}
-
 export async function GET(
-  req: NextRequest,
-  { params }: Params
-): Promise<NextResponse> {
+  request: NextRequest,
+  context: any
+) {
   try {
-    const videoId = params.videoId;
+    const { videoId } = context.params;
 
     if (!videoId) {
       return NextResponse.json({ error: "Video ID is required" }, { status: 400 });

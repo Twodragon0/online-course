@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Pagination } from '@/components/pagination';
 import { VideoCard } from '@/components/video-card';
@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, FileText } from "lucide-react";
 import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ITEMS_PER_PAGE = 6; // Increased items per page for more content visibility
 
@@ -37,7 +38,41 @@ interface Section {
   folderUrl?: string | null;
 }
 
-export default function CoursesPage() {
+// 로딩 상태를 위한 스켈레톤 컴포넌트
+function CourseSkeleton() {
+  return (
+    <div className="container mx-auto py-24 px-4">
+      <div className="max-w-5xl mx-auto space-y-12">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-1/4" />
+          <Skeleton className="h-4 w-1/3" />
+        </div>
+        <div className="space-y-8">
+          {[1, 2].map((section) => (
+            <div key={section} className="space-y-6">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+              <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
+                {[1, 2].map((item) => (
+                  <div key={item} className="border rounded-lg p-6 space-y-4">
+                    <Skeleton className="h-40 w-full rounded-lg" />
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 실제 콘텐츠를 표시하는 컴포넌트
+function CourseContent() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const [items, setItems] = useState<ContentItem[]>([]);
@@ -231,5 +266,14 @@ export default function CoursesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// 메인 페이지 컴포넌트
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={<CourseSkeleton />}>
+      <CourseContent />
+    </Suspense>
   );
 }
