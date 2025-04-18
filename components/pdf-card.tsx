@@ -4,15 +4,16 @@ import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FileText, ExternalLink } from "lucide-react";
 
-interface VideoCardProps {
+interface PdfCardProps {
   id: string;
   title: string;
   description: string | null;
   driveFileId: string | null;
 }
 
-export function VideoCard({ id, title, description, driveFileId }: VideoCardProps) {
+export function PdfCard({ id, title, description, driveFileId }: PdfCardProps) {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [embedError, setEmbedError] = useState(false);
@@ -22,18 +23,20 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
     return (
       <div className="rounded-lg border p-6 space-y-4">
         <div className="space-y-2">
-          <h3 className="text-xl font-semibold">{title}</h3>
+          <h3 className="text-xl font-semibold flex items-center">
+            <FileText className="mr-2 h-5 w-5 text-muted-foreground" />
+            {title}
+          </h3>
           {description && (
             <p className="text-muted-foreground">{description}</p>
           )}
-          <p className="text-red-500">비디오 파일을 찾을 수 없습니다</p>
+          <p className="text-red-500">PDF 파일을 찾을 수 없습니다</p>
         </div>
       </div>
     );
   }
 
-  // Google Drive 파일 ID로부터 임베드 URL 생성 (더 안정적인 방식)
-  // 영상 보기 가능하도록 공유 링크 형식으로 수정
+  // Google Drive 파일 ID로부터 임베드 URL 생성
   const embedUrl = `https://drive.google.com/file/d/${driveFileId}/preview`;
   
   // 로딩 상태 처리
@@ -54,7 +57,10 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
   if (!session) {
     return (
       <div className="rounded-lg border p-6">
-        <h3 className="text-xl font-semibold">{title}</h3>
+        <h3 className="text-xl font-semibold flex items-center">
+          <FileText className="mr-2 h-5 w-5 text-muted-foreground" />
+          {title}
+        </h3>
         <p className="text-muted-foreground mt-2">로그인이 필요합니다</p>
       </div>
     );
@@ -62,7 +68,7 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
 
   return (
     <div className="rounded-lg border p-6 space-y-4">
-      <div className="aspect-video relative">
+      <div className="aspect-[4/3] relative">
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-lg">
             <Skeleton className="h-full w-full rounded-lg" />
@@ -71,7 +77,7 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
         
         {embedError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted rounded-lg p-4">
-            <p className="text-red-500 text-center font-medium">영상을 로드할 수 없습니다</p>
+            <p className="text-red-500 text-center font-medium">PDF를 로드할 수 없습니다</p>
             <p className="text-sm text-muted-foreground text-center mt-2">
               Google Drive에서 직접 보기: 
               <a 
@@ -80,7 +86,7 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
                 rel="noopener noreferrer"
                 className="text-primary ml-1 hover:underline"
               >
-                영상 링크
+                PDF 링크
               </a>
             </p>
           </div>
@@ -89,7 +95,6 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
             src={embedUrl}
             className="absolute inset-0 w-full h-full rounded-lg"
             frameBorder="0"
-            allow="autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
             onError={handleIframeError}
             style={{ display: isLoading ? 'none' : 'block' }}
@@ -98,7 +103,10 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
       </div>
       
       <div className="space-y-2">
-        <h3 className="text-xl font-semibold">{title}</h3>
+        <h3 className="text-xl font-semibold flex items-center">
+          <FileText className="mr-2 h-5 w-5 text-muted-foreground" />
+          {title}
+        </h3>
         {description && (
           <p className="text-muted-foreground">{description}</p>
         )}
@@ -106,14 +114,17 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
       
       <div className="flex gap-4">
         <Button variant="outline" asChild>
-          <a href={`/watch/${id}/summary`}>요약 보기</a>
-        </Button>
-        <Button variant="outline" asChild>
-          <a href={`https://drive.google.com/file/d/${driveFileId}/view`} target="_blank" rel="noopener noreferrer">
+          <a 
+            href={`https://drive.google.com/file/d/${driveFileId}/view`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center"
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
             Google Drive에서 보기
           </a>
         </Button>
       </div>
     </div>
   );
-}
+} 

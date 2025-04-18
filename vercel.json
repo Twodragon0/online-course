@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "env": {
+    "DEEPSEEK_API_KEY": "dummy-key-for-deployment",
+    "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/online_course",
+    "NEXTAUTH_URL": "https://online-course.vercel.app",
+    "NEXTAUTH_SECRET": "complex_random_string_here"
+  },
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "github": {
+    "silent": true
+  }
+}

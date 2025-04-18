@@ -98,6 +98,7 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
     return 'general';
   };
 
+  // handleSendMessage 함수 수정
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -141,6 +142,12 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // 추천 질문 업데이트
+      if (data.relatedQuestions) {
+        setRecommendedQuestions(data.relatedQuestions);
+      }
+
     } catch (error) {
       console.error('Chat error:', error);
       setMessages(prev => [...prev, {
@@ -528,4 +535,4 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
       {chatContent}
     </Resizable>
   );
-} 
+}

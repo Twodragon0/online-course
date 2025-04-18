@@ -108,7 +108,9 @@ model ChatLog {
   id        String   @id @default(cuid())
   sessionId String
   message   String
-  response  String   @db.Text
+  response  String?  @db.Text
   category  String
   timestamp DateTime @default(now())
-} 
+
+  @@index([sessionId])
+}

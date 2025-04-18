@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 
 const RegisterPage: React.FC = () => {
   const searchParams = useSearchParams();
-  const plan = searchParams.get('plan');
+  const plan = searchParams?.get('plan');
 
   return (
     <div className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center py-12 sm:px-6 lg:px-8">

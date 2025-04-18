@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/db';
 
 interface Course {
   id: string;
@@ -15,12 +13,51 @@ interface Course {
   }[];
 }
 
+// 폴백 데이터 (Prisma 연결 실패시 사용)
+const fallbackCourses: Course[] = [
+  {
+    id: 'cloud-security-course',
+    title: '클라우드 보안 가이드',
+    description: 'AWS, Azure, GCP 클라우드 환경에서의 보안 설정 및 Best Practices',
+    price: 99.99,
+    imageUrl: null,
+    videos: [
+      { id: 'cloud-security-aws-2024', title: '2024 AWS 클라우드 보안 가이드' },
+      { id: 'cloud-security-azure-2024', title: '2024 Azure 클라우드 보안 가이드' }
+    ]
+  },
+  {
+    id: 'devsecops-course',
+    title: 'DevSecOps 과정',
+    description: '개발, 보안, 운영을 통합한 DevSecOps 실무 학습',
+    price: 129.99,
+    imageUrl: null,
+    videos: [
+      { id: 'devsecops-intro', title: 'DevSecOps 과정 - intro' }
+    ]
+  }
+];
+
 export default async function GetStartedPage() {
-  const courses = await prisma.course.findMany({
-    include: {
-      videos: true,
-    },
-  }) as Course[];
+  let courses: Course[] = [];
+  
+  try {
+    // Prisma로 데이터 가져오기 시도
+    courses = await prisma.course.findMany({
+      include: {
+        videos: true,
+      },
+    }) as Course[];
+    
+    // 데이터가 없으면 폴백 데이터 사용
+    if (!courses || courses.length === 0) {
+      courses = fallbackCourses;
+    }
+  } catch (error) {
+    console.error('데이터베이스 쿼리 실패:', error);
+    // 오류 발생시 폴백 데이터 사용
+    courses = fallbackCourses;
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-8">
