@@ -16,11 +16,21 @@ interface Course {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+function validateDatabaseUrl(): boolean {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) return false;
+  return dbUrl.startsWith('postgresql://') || 
+         dbUrl.startsWith('postgres://') || 
+         dbUrl.startsWith('postgresql+pooler://');
+}
+
 export default async function GetStartedPage() {
   let courses: Course[] = [];
   
-  // 빌드 시점에 데이터베이스 연결이 없을 수 있으므로 안전하게 처리
-  if (process.env.DATABASE_URL) {
+  // 빌드 시점에는 데이터베이스 쿼리 건너뛰기
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    courses = [];
+  } else if (process.env.DATABASE_URL && validateDatabaseUrl()) {
     try {
       courses = await prisma.course.findMany({
         include: {
