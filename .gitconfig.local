@@ -1,0 +1,19 @@
+# 로컬 Git 설정 예시
+# 이 파일을 참고하여 Git 설정을 구성하세요
+
+# GitHub 계정에 연결된 이메일 주소로 설정
+# git config user.name "YourGitHubUsername"
+# git config user.email "your-github-email@example.com"
+
+# 또는 전역 설정으로:
+# git config --global user.name "YourGitHubUsername"
+# git config --global user.email "your-github-email@example.com"
+
+# 현재 설정 확인:
+# git config user.name
+# git config user.email
+
+# 최근 커밋의 작성자 정보 수정 (필요시):
+# git rebase -i HEAD~5 --exec 'git commit --amend --author="YourName <your-email@example.com>" --no-edit'
+# git push --force-with-lease
+
