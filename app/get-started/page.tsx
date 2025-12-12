@@ -1,7 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import Link from 'next/link';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 interface Course {
   id: string;
@@ -16,11 +15,18 @@ interface Course {
 }
 
 export default async function GetStartedPage() {
-  const courses = await prisma.course.findMany({
-    include: {
-      videos: true,
-    },
-  }) as Course[];
+  let courses: Course[] = [];
+  
+  try {
+    courses = await prisma.course.findMany({
+      include: {
+        videos: true,
+      },
+    }) as Course[];
+  } catch (error) {
+    console.error('Failed to fetch courses:', error);
+    courses = [];
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-8">

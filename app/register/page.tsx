@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react";
+import React, { Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { UserPlus, Sparkles, Zap, CheckCircle2 } from "lucide-react";
 
-const RegisterPage: React.FC = () => {
+function RegisterContent() {
   const searchParams = useSearchParams();
   const plan = searchParams?.get('plan');
   const isPro = plan === 'pro';
@@ -97,5 +97,22 @@ const RegisterPage: React.FC = () => {
     </div>
   );
 }
+
+const RegisterPage: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <Card className="p-8 shadow-lg w-full max-w-md">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-muted rounded w-3/4 mx-auto"></div>
+            <div className="h-4 bg-muted rounded w-1/2 mx-auto"></div>
+          </div>
+        </Card>
+      </div>
+    }>
+      <RegisterContent />
+    </Suspense>
+  );
+};
 
 export default RegisterPage; 

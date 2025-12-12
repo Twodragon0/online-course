@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Pagination } from '@/components/pagination';
 import { VideoCard } from '@/components/video-card';
@@ -32,7 +32,7 @@ interface Section {
   };
 }
 
-export default function CoursesPage() {
+function CoursesContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const [videos, setVideos] = useState<Video[]>([]);
@@ -162,5 +162,33 @@ export default function CoursesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-24 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-8">
+            <div className="space-y-4">
+              <div className="h-10 bg-muted rounded-lg w-1/3"></div>
+              <div className="h-6 bg-muted rounded-lg w-1/4"></div>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="border rounded-xl p-6 space-y-4">
+                  <div className="aspect-video bg-muted rounded-lg"></div>
+                  <div className="h-6 bg-muted rounded w-3/4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <CoursesContent />
+    </Suspense>
   );
 }
