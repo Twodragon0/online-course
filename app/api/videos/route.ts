@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
+    // 빌드 시점에는 빈 배열 반환
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      return NextResponse.json([]);
+    }
+
     if (!prisma) {
       return NextResponse.json(
         { error: 'Database not configured' },

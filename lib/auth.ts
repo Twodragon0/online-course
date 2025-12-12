@@ -5,6 +5,11 @@ import { prisma } from "./prisma";
 
 // DATABASE_URL 검증
 function isDatabaseUrlValid(): boolean {
+  // 빌드 시점에는 false 반환
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return false;
+  }
+  
   const dbUrl = process.env.DATABASE_URL;
   return !!(dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql+pooler://')));
 }
