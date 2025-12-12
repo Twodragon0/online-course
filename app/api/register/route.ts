@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { hash } from 'bcrypt';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
+    if (!prisma) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 503 }
+      );
+    }
+    
     const { email, password, name } = await request.json();
 
     // 이메일 중복 체크

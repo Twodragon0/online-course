@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 interface ChatLog {
   id: string;
@@ -13,6 +11,10 @@ interface ChatLog {
 }
 
 async function findRelevantResponses(message: string): Promise<ChatLog[]> {
+  if (!prisma) {
+    return [];
+  }
+  
   const logs = await prisma.chatLog.findMany({
     where: {
       OR: [
@@ -102,6 +104,13 @@ export async function POST(request: Request) {
     }
 
     // 응답 저장
+    if (!prisma) {
+      return NextResponse.json({
+        response: aiResponse,
+        logId: null
+      });
+    }
+    
     const chatLog = await prisma.chatLog.create({
       data: {
         sessionId: sessionId || 'general',
