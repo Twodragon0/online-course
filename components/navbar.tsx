@@ -20,10 +20,10 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
-      <nav className="flex items-center justify-between p-6 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
+    <header className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40 shadow-sm">
+      <nav className="flex items-center justify-between p-4 sm:p-6 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
         <div className="flex lg:flex-1">
-          <Link href="/" className="-m-1.5 p-1.5 text-xl font-bold">
+          <Link href="/" className="-m-1.5 p-1.5 text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
             OnlineCourse
           </Link>
         </div>
@@ -37,18 +37,22 @@ export function Navbar() {
             <Menu className="h-6 w-6" aria-hidden="true" />
           </button>
         </div>
-        <div className="hidden lg:flex lg:gap-x-12">
+        <div className="hidden lg:flex lg:gap-x-8">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className={`text-sm font-semibold leading-6 ${
+              className={`text-sm font-semibold leading-6 transition-colors relative group ${
                 pathname === item.href
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {item.name}
+              {pathname === item.href && (
+                <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
+              )}
+              <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
             </Link>
           ))}
         </div>
@@ -78,7 +82,7 @@ export function Navbar() {
               </button>
               <Link
                 href="/register"
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30 transition-all hover:scale-105"
               >
                 Get Started
               </Link>
@@ -93,7 +97,7 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div className="lg:hidden">
           <div className="fixed inset-0 z-50" />
-          <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-background px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
+          <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-background/95 backdrop-blur-md px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-border shadow-xl">
             <div className="flex items-center justify-between">
               <Link href="/" className="-m-1.5 p-1.5 text-xl font-bold">
                 OnlineCourse

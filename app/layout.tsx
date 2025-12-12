@@ -29,7 +29,7 @@ export default function RootLayout({
         >
           <Providers>
             <Navbar />
-            <main>{children}</main>
+            <main className="pt-16">{children}</main>
             <ChatBot />
           </Providers>
         </ThemeProvider>
