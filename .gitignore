@@ -7,3 +7,6 @@ node_modules
 dist
 build
 coverage
+.env*.local
+tsconfig.tsbuildinfo
+.tmp_backup
