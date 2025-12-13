@@ -174,33 +174,71 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
     }
   };
 
-  // 메시지 포맷팅
+  // 메시지 포맷팅 (XSS 방지를 위해 안전한 방법 사용)
   const formatMessage = (content: string, isAssistant: boolean) => {
-    if (!isAssistant) return content;
+    if (!isAssistant) {
+      // 사용자 메시지는 그대로 표시 (이미 sanitized)
+      return <div className="whitespace-pre-wrap">{content}</div>;
+    }
     
+    // 서버에서 이미 sanitizeInput으로 처리되었지만, 추가 보안을 위해
+    // HTML 태그를 이스케이프하고 마크다운만 파싱
+    const escapeHtml = (text: string) => {
+      // 서버 사이드 렌더링 호환을 위한 간단한 이스케이프
+      if (typeof window === 'undefined') {
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#x27;');
+      }
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
     // 볼드 텍스트 패턴 매칭을 위한 정규식
     const boldPattern = /\*\*(.*?)\*\*/g;
     // 코드 블록 패턴 매칭을 위한 정규식
     const codeBlockPattern = /```(?:(\w+)\n)?([\s\S]*?)```/g;
     const urlPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
     
-    // 볼드 텍스트, 코드 블록, URL을 HTML로 변환
-    let formattedContent = content
+    // URL 검증 함수 (안전한 URL만 허용)
+    const isValidUrl = (url: string): boolean => {
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    };
+    
+    // 볼드 텍스트, 코드 블록, URL을 안전하게 변환
+    let formattedContent = escapeHtml(content)
       .replace(boldPattern, '<strong class="font-bold">$1</strong>')
       .replace(codeBlockPattern, (match, language, code) => {
-        const langClass = language ? ` language-${language}` : '';
+        const escapedCode = escapeHtml(code.trim());
+        const langClass = language ? ` language-${escapeHtml(language)}` : '';
         const langLabel = language ? 
-          `<div class="absolute top-2 right-2 text-xs text-muted-foreground bg-background/90 px-2 py-1 rounded-md">${language}</div>` : '';
+          `<div class="absolute top-2 right-2 text-xs text-muted-foreground bg-background/90 px-2 py-1 rounded-md">${escapeHtml(language)}</div>` : '';
         return `
           <pre class="relative rounded-lg bg-muted/50 p-4 my-3">
             ${langLabel}
-            <code class="block text-sm font-mono${langClass}">${code.trim()}</code>
+            <code class="block text-sm font-mono${langClass}">${escapedCode}</code>
           </pre>
         `;
       })
-      .replace(urlPattern, 
-        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 underline decoration-dotted underline-offset-4 transition-colors">$1</a>'
-      );
+      .replace(urlPattern, (match, text, url) => {
+        // URL 검증 후 안전한 링크만 생성
+        if (isValidUrl(url)) {
+          const escapedText = escapeHtml(text);
+          const escapedUrl = escapeHtml(url);
+          return `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 underline decoration-dotted underline-offset-4 transition-colors">${escapedText}</a>`;
+        }
+        // 유효하지 않은 URL은 텍스트로만 표시
+        return escapeHtml(text);
+      });
 
     return (
       <div 

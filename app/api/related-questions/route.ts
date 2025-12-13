@@ -1,9 +1,54 @@
 import { NextResponse } from "next/server";
 import { prisma } from '@/lib/prisma';
+import {
+  checkRateLimit,
+  getClientIp,
+  isValidMessage,
+  sanitizeInput,
+} from '@/lib/security';
 
 export async function POST(req: Request) {
   try {
-    const { response } = await req.json();
+    // Rate limiting
+    const clientIp = getClientIp(req);
+    const rateLimit = checkRateLimit(`related-questions:${clientIp}`, 20, 60000); // 1분에 20회
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': '60',
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+          },
+        }
+      );
+    }
+
+    const body = await req.json();
+    const { response: rawResponse } = body;
+
+    // 입력 검증
+    if (!rawResponse || typeof rawResponse !== 'string') {
+      return NextResponse.json(
+        { error: '응답 내용이 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 메시지 검증
+    const responseValidation = isValidMessage(rawResponse, 10000); // 최대 10000자
+    if (!responseValidation.valid) {
+      return NextResponse.json(
+        { error: responseValidation.error },
+        { status: 400 }
+      );
+    }
+
+    // 응답 내용 sanitization (XSS 방지)
+    const response = sanitizeInput(rawResponse);
     
     // 컨텍스트 기반 동적 질문 생성
     const generateDynamicQuestions = (content: string): string[] => {
@@ -86,8 +131,9 @@ export async function POST(req: Request) {
     // DeepSeek API를 통한 질문 생성
     const generateDeepSeekQuestions = async (content: string): Promise<string[]> => {
       const apiKey = process.env.DEEPSEEK_API_KEY;
-      if (!apiKey) {
-        throw new Error('DeepSeek API key is not configured');
+      if (!apiKey || apiKey.trim().length === 0) {
+        console.error('DeepSeek API key is not configured');
+        return [];
       }
 
       const prompt = `다음 답변에 대한 적절한 후속 질문 2개를 생성해주세요. 
@@ -103,6 +149,10 @@ export async function POST(req: Request) {
       - 마지막에 물음표 포함`;
 
       try {
+        // API 호출 타임아웃 설정 (20초)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
         const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -123,22 +173,39 @@ export async function POST(req: Request) {
             ],
             temperature: 0.7,
             max_tokens: 200
-          })
+          }),
+          signal: controller.signal,
         });
 
+        clearTimeout(timeoutId);
+
         if (!deepseekResponse.ok) {
-          throw new Error('DeepSeek API error');
+          const errorText = await deepseekResponse.text().catch(() => 'Unknown error');
+          console.error('DeepSeek API error:', deepseekResponse.status, errorText);
+          return [];
         }
 
         const result = await deepseekResponse.json();
-        const generatedQuestions = result.choices[0]?.message?.content
+        const content = result.choices[0]?.message?.content;
+        
+        if (!content || typeof content !== 'string') {
+          return [];
+        }
+
+        // 생성된 질문 sanitization
+        const generatedQuestions = content
           .split('\n')
           .filter((q: string) => q.trim() && q.includes('?'))
+          .map((q: string) => sanitizeInput(q.trim()))
           .slice(0, 2);
 
         return generatedQuestions;
       } catch (error) {
-        console.error('DeepSeek API error:', error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('DeepSeek API timeout');
+        } else {
+          console.error('DeepSeek API error:', error instanceof Error ? error.message : 'Unknown error');
+        }
         return [];
       }
     };
@@ -156,23 +223,35 @@ export async function POST(req: Request) {
 
     // 중복 제거 및 최대 2개 질문 반환
     const uniqueQuestions = Array.from(new Set(combinedQuestions));
+    const defaultQuestions = [
+      "💡 이 주제와 관련된 실제 사례가 궁금합니다.",
+      "🔍 더 자세한 기술적인 내용이 알고 싶습니다."
+    ];
+    
     const finalQuestions = uniqueQuestions.length >= 2 ? 
       uniqueQuestions.slice(0, 2) : 
-      [
-        ...uniqueQuestions,
-        "💡 이 주제와 관련된 실제 사례가 궁금합니다.",
-        "🔍 더 자세한 기술적인 내용이 알고 싶습니다."
-      ].slice(0, 2);
+      [...uniqueQuestions, ...defaultQuestions].slice(0, 2);
 
-    return NextResponse.json({ questions: finalQuestions });
+    return NextResponse.json(
+      { questions: finalQuestions },
+      {
+        headers: {
+          'X-RateLimit-Limit': '20',
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        },
+      }
+    );
 
   } catch (error) {
-    console.error('Error generating related questions:', error);
-    return NextResponse.json({
-      questions: [
-        "💡 이 주제와 관련된 실제 사례가 궁금합니다.",
-        "🔍 더 자세한 기술적인 내용이 알고 싶습니다."
-      ]
-    });
+    console.error('Error generating related questions:', error instanceof Error ? error.message : 'Unknown error');
+    return NextResponse.json(
+      {
+        questions: [
+          "💡 이 주제와 관련된 실제 사례가 궁금합니다.",
+          "🔍 더 자세한 기술적인 내용이 알고 싶습니다."
+        ]
+      },
+      { status: 500 }
+    );
   }
 } 
