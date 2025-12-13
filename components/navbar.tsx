@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 const navigation = [
   { name: "Features", href: "/features" },
@@ -17,7 +19,6 @@ const navigation = [
 export function Navbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40 shadow-sm">
@@ -27,16 +28,98 @@ export function Navbar() {
             OnlineCourse
           </Link>
         </div>
-        <div className="flex lg:hidden">
-          <button
-            type="button"
-            className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5"
-            onClick={() => setMobileMenuOpen(true)}
-          >
-            <span className="sr-only">Open main menu</span>
-            <Menu className="h-6 w-6" aria-hidden="true" />
-          </button>
+        
+        {/* Mobile menu button */}
+        <div className="flex lg:hidden items-center gap-2">
+          <ThemeToggle />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                aria-label="Open menu"
+              >
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:w-[350px] p-0 flex flex-col">
+              <SheetHeader className="px-4 sm:px-6 py-4 border-b shrink-0">
+                <SheetTitle className="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                  OnlineCourse
+                </SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col flex-1 min-h-0">
+                <div className="flex-1 px-3 sm:px-4 py-4 overflow-y-auto">
+                  <div className="space-y-1">
+                    {navigation.map((item) => (
+                      <SheetClose key={item.name} asChild>
+                        <Link
+                          href={item.href}
+                          className={`flex items-center w-full px-4 py-3 text-sm sm:text-base font-semibold rounded-lg transition-colors touch-manipulation ${
+                            pathname === item.href
+                              ? "bg-accent text-primary"
+                              : "text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80"
+                          }`}
+                        >
+                          {item.name}
+                        </Link>
+                      </SheetClose>
+                    ))}
+                  </div>
+                  <Separator className="my-4" />
+                  {session ? (
+                    <div className="space-y-1">
+                      <SheetClose asChild>
+                        <Link
+                          href="/dashboard"
+                          className={`flex items-center w-full px-4 py-3 text-sm sm:text-base font-semibold rounded-lg transition-colors touch-manipulation ${
+                            pathname === "/dashboard"
+                              ? "bg-accent text-primary"
+                              : "text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80"
+                          }`}
+                        >
+                          Dashboard
+                        </Link>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Button
+                          variant="ghost"
+                          onClick={() => signOut()}
+                          className="w-full justify-start px-4 py-3 text-sm sm:text-base font-semibold text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80 touch-manipulation"
+                        >
+                          Log out
+                        </Button>
+                      </SheetClose>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <SheetClose asChild>
+                        <Button
+                          variant="ghost"
+                          onClick={() => signIn("google")}
+                          className="w-full justify-start px-4 py-3 text-sm sm:text-base font-semibold text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80 touch-manipulation"
+                        >
+                          Log in
+                        </Button>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Button
+                          asChild
+                          className="w-full px-4 py-3 text-sm sm:text-base font-semibold touch-manipulation"
+                        >
+                          <Link href="/register">Get Started</Link>
+                        </Button>
+                      </SheetClose>
+                    </div>
+                  )}
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
+
+        {/* Desktop navigation */}
         <div className="hidden lg:flex lg:gap-x-8">
           {navigation.map((item) => (
             <Link
@@ -56,18 +139,18 @@ export function Navbar() {
             </Link>
           ))}
         </div>
-        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-4">
+        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-4 lg:items-center">
           {session ? (
             <>
               <Link
                 href="/dashboard"
-                className="text-sm font-semibold leading-6 text-muted-foreground hover:text-foreground"
+                className="text-sm font-semibold leading-6 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Dashboard
               </Link>
               <button
                 onClick={() => signOut()}
-                className="text-sm font-semibold leading-6 text-muted-foreground hover:text-foreground"
+                className="text-sm font-semibold leading-6 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Log out
               </button>
@@ -76,7 +159,7 @@ export function Navbar() {
             <>
               <button
                 onClick={() => signIn("google")}
-                className="text-sm font-semibold leading-6 text-muted-foreground hover:text-foreground"
+                className="text-sm font-semibold leading-6 text-muted-foreground hover:text-foreground transition-colors"
               >
                 Log in
               </button>
@@ -88,89 +171,9 @@ export function Navbar() {
               </Link>
             </>
           )}
-        </div>
-        <div className="ml-auto flex items-center space-x-4">
           <ThemeToggle />
         </div>
       </nav>
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden">
-          <div className="fixed inset-0 z-50" />
-          <div className="fixed inset-y-0 right-0 z-50 w-full overflow-y-auto bg-background/95 backdrop-blur-md px-6 py-6 sm:max-w-sm sm:ring-1 sm:ring-border shadow-xl">
-            <div className="flex items-center justify-between">
-              <Link href="/" className="-m-1.5 p-1.5 text-xl font-bold">
-                OnlineCourse
-              </Link>
-              <button
-                type="button"
-                className="-m-2.5 rounded-md p-2.5"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <span className="sr-only">Close menu</span>
-                <X className="h-6 w-6" aria-hidden="true" />
-              </button>
-            </div>
-            <div className="mt-6 flow-root">
-              <div className="-my-6 divide-y divide-gray-500/10">
-                <div className="space-y-2 py-6">
-                  {navigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-foreground hover:bg-muted"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
-                </div>
-                <div className="py-6">
-                  {session ? (
-                    <>
-                      <Link
-                        href="/dashboard"
-                        className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-foreground hover:bg-muted"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Dashboard
-                      </Link>
-                      <button
-                        onClick={() => {
-                          signOut();
-                          setMobileMenuOpen(false);
-                        }}
-                        className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-foreground hover:bg-muted w-full text-left"
-                      >
-                        Log out
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => {
-                          signIn("google");
-                          setMobileMenuOpen(false);
-                        }}
-                        className="-mx-3 block rounded-lg px-3 py-2.5 text-base font-semibold leading-7 text-foreground hover:bg-muted w-full text-left"
-                      >
-                        Log in
-                      </button>
-                      <Link
-                        href="/register"
-                        className="-mx-3 block rounded-lg bg-primary px-3 py-2.5 text-base font-semibold leading-7 text-primary-foreground hover:bg-primary/90"
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        Get Started
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 } 
