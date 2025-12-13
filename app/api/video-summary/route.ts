@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  isValidFileId,
+  checkRateLimit,
+  getClientIp,
+} from '@/lib/security';
 
 type CourseType = 'devsecops' | 'aiSns';
 
@@ -33,18 +38,54 @@ const defaultSummaries: DefaultSummaries = {
 
 export async function POST(request: Request) {
   try {
-    const { fileId, courseType } = await request.json() as { fileId: string; courseType: CourseType };
-
-    if (!fileId || !courseType) {
+    // Rate limiting
+    const clientIp = getClientIp(request);
+    const rateLimit = checkRateLimit(`video-summary:${clientIp}`, 10, 60000); // 1분에 10회
+    if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: 'Missing required parameters' },
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': '60',
+            'X-RateLimit-Limit': '10',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+          },
+        }
+      );
+    }
+
+    const body = await request.json();
+    const { fileId, courseType } = body;
+
+    // 입력 검증
+    if (!fileId || typeof fileId !== 'string') {
+      return NextResponse.json(
+        { error: '파일 ID가 필요합니다.' },
         { status: 400 }
       );
     }
 
+    if (!courseType || typeof courseType !== 'string') {
+      return NextResponse.json(
+        { error: '코스 타입이 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 파일 ID 검증
+    if (!isValidFileId(fileId)) {
+      return NextResponse.json(
+        { error: '유효하지 않은 파일 ID입니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 코스 타입 검증
     if (courseType !== 'devsecops' && courseType !== 'aiSns') {
       return NextResponse.json(
-        { error: 'Invalid course type' },
+        { error: '유효하지 않은 코스 타입입니다.' },
         { status: 400 }
       );
     }
@@ -54,6 +95,11 @@ export async function POST(request: Request) {
       return NextResponse.json({
         summary: summary.content,
         title: summary.title
+      }, {
+        headers: {
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        },
       });
     }
 
@@ -61,12 +107,17 @@ export async function POST(request: Request) {
     return NextResponse.json({
       summary: "생성된 요약 내용...",
       title: "생성된 제목..."
+    }, {
+      headers: {
+        'X-RateLimit-Limit': '10',
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+      },
     });
 
   } catch (error) {
-    console.error('Video summary error:', error);
+    console.error('Video summary error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
-      { error: 'Failed to generate video summary' },
+      { error: '비디오 요약 생성에 실패했습니다.' },
       { status: 500 }
     );
   }

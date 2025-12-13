@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import {
+  isValidMessage,
+  isValidCategory,
+  isValidSessionId,
+  sanitizeInput,
+  checkRateLimit,
+  getClientIp,
+} from '@/lib/security';
 
 interface ChatLog {
   id: string;
@@ -15,6 +23,7 @@ async function findRelevantResponses(message: string): Promise<ChatLog[]> {
     return [];
   }
   
+  // SQL Injection 방지를 위해 Prisma의 파라미터화된 쿼리 사용
   const logs = await prisma.chatLog.findMany({
     where: {
       OR: [
@@ -33,7 +42,56 @@ async function findRelevantResponses(message: string): Promise<ChatLog[]> {
 
 export async function POST(request: Request) {
   try {
-    const { message, category, sessionId } = await request.json();
+    // Rate limiting
+    const clientIp = getClientIp(request);
+    const rateLimit = checkRateLimit(`chat:${clientIp}`, 20, 60000); // 1분에 20회
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': '60',
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+          },
+        }
+      );
+    }
+
+    const body = await request.json();
+    const { message: rawMessage, category: rawCategory, sessionId: rawSessionId } = body;
+
+    // 입력 검증
+    if (!rawMessage) {
+      return NextResponse.json(
+        { error: '메시지가 필요합니다.' },
+        { status: 400 }
+      );
+    }
+
+    // 메시지 검증
+    const messageValidation = isValidMessage(rawMessage, 5000);
+    if (!messageValidation.valid) {
+      return NextResponse.json(
+        { error: messageValidation.error },
+        { status: 400 }
+      );
+    }
+
+    // 메시지 sanitization (XSS 방지)
+    const message = sanitizeInput(rawMessage);
+
+    // 카테고리 검증
+    const category = rawCategory && isValidCategory(rawCategory) 
+      ? rawCategory.toLowerCase() 
+      : 'general';
+
+    // 세션 ID 검증 및 sanitization
+    const sessionId = rawSessionId && isValidSessionId(rawSessionId)
+      ? sanitizeInput(rawSessionId)
+      : 'general';
 
     // 관련 이전 대화 검색
     const relevantResponses = await findRelevantResponses(message);
@@ -44,8 +102,12 @@ export async function POST(request: Request) {
 
     // DeepSeek API 호출
     const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
-      throw new Error('DeepSeek API key is not configured');
+    if (!apiKey || apiKey.trim().length === 0) {
+      console.error('DeepSeek API key is not configured');
+      return NextResponse.json(
+        { error: '서비스가 일시적으로 사용할 수 없습니다.' },
+        { status: 503 }
+      );
     }
 
     const systemPrompt = `당신은 DevSecOps & 클라우드 보안 온라인 코스의 AI 어시스턴트입니다.
@@ -68,67 +130,125 @@ export async function POST(request: Request) {
 
 이전 대화 맥락을 고려하여 답변하되, 각 답변은 독립적으로도 이해할 수 있도록 작성해주세요.`;
 
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          ...contextMessages,
-          {
-            role: "user",
-            content: message
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000
-      })
-    });
+    // API 호출 타임아웃 설정 (30초)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    if (!response.ok) {
-      throw new Error('DeepSeek API error');
-    }
-
-    const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content;
-
-    if (!aiResponse) {
-      throw new Error('No response from DeepSeek API');
-    }
-
-    // 응답 저장
-    if (!prisma) {
-      return NextResponse.json({
-        response: aiResponse,
-        logId: null
+    try {
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt
+            },
+            ...contextMessages,
+            {
+              role: "user",
+              content: message
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1000
+        }),
+        signal: controller.signal,
       });
-    }
-    
-    const chatLog = await prisma.chatLog.create({
-      data: {
-        sessionId: sessionId || 'general',
-        message,
-        response: aiResponse,
-        category,
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error('DeepSeek API error:', response.status, errorText);
+        return NextResponse.json(
+          { error: 'AI 응답 생성에 실패했습니다.' },
+          { status: 502 }
+        );
       }
-    });
 
-    return NextResponse.json({
-      response: aiResponse,
-      logId: chatLog.id
-    });
+      const data = await response.json();
+      const aiResponse = data.choices[0]?.message?.content;
 
+      if (!aiResponse || typeof aiResponse !== 'string') {
+        return NextResponse.json(
+          { error: 'AI 응답을 받을 수 없습니다.' },
+          { status: 502 }
+        );
+      }
+
+      // AI 응답도 sanitization (XSS 방지)
+      const sanitizedResponse = sanitizeInput(aiResponse);
+
+      // 응답 저장
+      if (!prisma) {
+        return NextResponse.json({
+          response: sanitizedResponse,
+          logId: null
+        }, {
+          headers: {
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          },
+        });
+      }
+      
+      try {
+        const chatLog = await prisma.chatLog.create({
+          data: {
+            sessionId,
+            message,
+            response: sanitizedResponse,
+            category,
+          }
+        });
+
+        return NextResponse.json({
+          response: sanitizedResponse,
+          logId: chatLog.id
+        }, {
+          headers: {
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          },
+        });
+      } catch (dbError) {
+        // 데이터베이스 오류는 로깅만 하고 응답은 반환
+        console.error('Database error:', dbError instanceof Error ? dbError.message : 'Unknown error');
+        return NextResponse.json({
+          response: sanitizedResponse,
+          logId: null
+        }, {
+          headers: {
+            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          },
+        });
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        return NextResponse.json(
+          { error: '요청 시간이 초과되었습니다.' },
+          { status: 504 }
+        );
+      }
+
+      console.error('Chat API Error:', fetchError instanceof Error ? fetchError.message : 'Unknown error');
+      return NextResponse.json(
+        { error: '채팅 메시지 처리에 실패했습니다.' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error('Chat API Error:', error);
+    console.error('Chat API Error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
-      { error: 'Failed to process chat message' },
+      { error: '채팅 메시지 처리에 실패했습니다.' },
       { status: 500 }
     );
   }

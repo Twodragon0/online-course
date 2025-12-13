@@ -1,8 +1,27 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit, getClientIp } from '@/lib/security';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Rate limiting
+    const clientIp = getClientIp(request);
+    const rateLimit = checkRateLimit(`videos:${clientIp}`, 30, 60000); // 1분에 30회
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': '60',
+            'X-RateLimit-Limit': '30',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimit.resetTime.toString(),
+          },
+        }
+      );
+    }
+
     // 빌드 시점에는 빈 배열 반환
     if (process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json([]);
@@ -22,13 +41,19 @@ export async function GET() {
       include: {
         course: true,
       },
+      take: 100, // 결과 제한 (DoS 방지)
     });
 
-    return NextResponse.json(videos);
+    return NextResponse.json(videos, {
+      headers: {
+        'X-RateLimit-Limit': '30',
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+      },
+    });
   } catch (error) {
-    console.error('Failed to fetch videos:', error);
+    console.error('Failed to fetch videos:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
-      { error: 'Failed to fetch videos' },
+      { error: '비디오 목록을 가져오는데 실패했습니다.' },
       { status: 500 }
     );
   }

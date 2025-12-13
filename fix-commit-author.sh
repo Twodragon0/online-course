@@ -28,3 +28,4 @@ echo "  2. 'Add email address' 클릭"
 echo "  3. '$GITHUB_EMAIL' 추가 및 인증"
 echo ""
 
+

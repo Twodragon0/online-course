@@ -93,3 +93,4 @@ echo $DATABASE_URL
 - `.env` 파일은 `.gitignore`에 포함되어 있어야 합니다
 - Production 환경 변수는 Vercel 대시보드에서만 관리하세요
 
+
