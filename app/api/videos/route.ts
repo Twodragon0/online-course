@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { checkRateLimit, getClientIp } from '@/lib/security';
+import { checkRateLimit, getClientIp, getCached } from '@/lib/security';
 
 export async function GET(request: Request) {
   try {
     // Rate limiting
     const clientIp = getClientIp(request);
-    const rateLimit = checkRateLimit(`videos:${clientIp}`, 30, 60000); // 1분에 30회
+    const rateLimit = await checkRateLimit(`videos:${clientIp}`, 30, 60000); // 1분에 30회
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
@@ -34,20 +34,28 @@ export async function GET(request: Request) {
       );
     }
     
-    const videos = await prisma.video.findMany({
-      orderBy: {
-        createdAt: 'asc',
+    // Redis 캐싱 적용 (5분 TTL)
+    const videos = await getCached(
+      'videos:list',
+      async () => {
+        return await prisma.video.findMany({
+          orderBy: {
+            createdAt: 'asc',
+          },
+          include: {
+            course: true,
+          },
+          take: 100, // 결과 제한 (DoS 방지)
+        });
       },
-      include: {
-        course: true,
-      },
-      take: 100, // 결과 제한 (DoS 방지)
-    });
+      300 // 5분 캐시
+    );
 
     return NextResponse.json(videos, {
       headers: {
         'X-RateLimit-Limit': '30',
         'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },
     });
   } catch (error) {

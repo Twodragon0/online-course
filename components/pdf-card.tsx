@@ -10,16 +10,22 @@ interface PdfCardProps {
   id: string;
   title: string;
   description: string | null;
-  driveFileId: string | null;
+  driveFileId?: string | null;
+  blobUrl?: string | null; // Vercel Blob Storage URL
 }
 
-export function PdfCard({ id, title, description, driveFileId }: PdfCardProps) {
+export function PdfCard({ id, title, description, driveFileId, blobUrl }: PdfCardProps) {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [embedError, setEmbedError] = useState(false);
 
-  // Return early if no driveFileId
-  if (!driveFileId) {
+  // Blob URL 또는 Google Drive URL 결정
+  const isBlobUrl = !!blobUrl;
+  const pdfUrl = isBlobUrl ? blobUrl : (driveFileId ? `https://drive.google.com/file/d/${driveFileId}/preview` : null);
+  const directUrl = isBlobUrl ? blobUrl : (driveFileId ? `https://drive.google.com/file/d/${driveFileId}/view` : null);
+
+  // Return early if no file URL
+  if (!pdfUrl) {
     return (
       <div className="group relative rounded-xl border bg-card p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-primary/50">
         <div className="space-y-2">
@@ -35,9 +41,6 @@ export function PdfCard({ id, title, description, driveFileId }: PdfCardProps) {
       </div>
     );
   }
-
-  // Google Drive 파일 ID로부터 임베드 URL 생성
-  const embedUrl = `https://drive.google.com/file/d/${driveFileId}/preview`;
   
   // 로딩 상태 처리
   useEffect(() => {
@@ -91,11 +94,11 @@ export function PdfCard({ id, title, description, driveFileId }: PdfCardProps) {
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted rounded-lg p-4">
             <p className="text-red-500 text-center font-medium mb-2">PDF를 로드할 수 없습니다</p>
             <p className="text-sm text-muted-foreground text-center mb-4">
-              Google Drive에서 직접 보기
+              {isBlobUrl ? 'PDF 파일을 직접 보기' : 'Google Drive에서 직접 보기'}
             </p>
             <Button variant="outline" size="sm" asChild>
               <a 
-                href={`https://drive.google.com/file/d/${driveFileId}/view`} 
+                href={directUrl || '#'} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"
@@ -105,9 +108,18 @@ export function PdfCard({ id, title, description, driveFileId }: PdfCardProps) {
               </a>
             </Button>
           </div>
+        ) : isBlobUrl ? (
+          <iframe
+            src={pdfUrl}
+            className="absolute inset-0 w-full h-full rounded-lg"
+            frameBorder="0"
+            allowFullScreen
+            onError={handleIframeError}
+            style={{ display: isLoading ? 'none' : 'block' }}
+          />
         ) : (
           <iframe
-            src={embedUrl}
+            src={pdfUrl}
             className="absolute inset-0 w-full h-full rounded-lg"
             frameBorder="0"
             allowFullScreen
@@ -130,13 +142,13 @@ export function PdfCard({ id, title, description, driveFileId }: PdfCardProps) {
       <div className="flex gap-3 mt-4">
         <Button variant="outline" size="sm" asChild className="flex-1">
           <a 
-            href={`https://drive.google.com/file/d/${driveFileId}/view`} 
+            href={directUrl || '#'} 
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-2"
           >
             <ExternalLink className="h-4 w-4" />
-            Google Drive에서 보기
+            {isBlobUrl ? 'PDF 보기' : 'Google Drive에서 보기'}
           </a>
         </Button>
       </div>

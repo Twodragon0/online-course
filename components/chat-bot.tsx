@@ -126,10 +126,19 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+        throw new Error(errorData.error || `서버 오류 (${response.status})`);
+      }
+
       const data = await response.json();
       
       if (data.error) {
         throw new Error(data.error);
+      }
+
+      if (!data.response || typeof data.response !== 'string') {
+        throw new Error('응답 형식이 올바르지 않습니다.');
       }
 
       const assistantMessage: ChatMessage = {
@@ -143,13 +152,20 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Chat error:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.";
+      
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
-        content: "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.",
+        content: errorMessage,
         role: 'assistant',
         category: 'error',
         timestamp: new Date(),
       }]);
+      
+      // 사용자에게 토스트 알림 표시
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
       setThinkingMessage('');
@@ -275,10 +291,19 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+        throw new Error(errorData.error || `서버 오류 (${response.status})`);
+      }
+
       const data = await response.json();
       
       if (data.error) {
         throw new Error(data.error);
+      }
+
+      if (!data.response || typeof data.response !== 'string') {
+        throw new Error('응답 형식이 올바르지 않습니다.');
       }
 
       const assistantMessage: ChatMessage = {
@@ -292,13 +317,20 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Chat error:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.";
+      
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
-        content: "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.",
+        content: errorMessage,
         role: 'assistant',
         category: 'error',
         timestamp: new Date(),
       }]);
+      
+      // 사용자에게 토스트 알림 표시
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
       setThinkingMessage('');

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   try {
     // Rate limiting
     const clientIp = getClientIp(req);
-    const rateLimit = checkRateLimit(`related-questions:${clientIp}`, 20, 60000); // 1분에 20회
+    const rateLimit = await checkRateLimit(`related-questions:${clientIp}`, 20, 60000); // 1분에 20회
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },

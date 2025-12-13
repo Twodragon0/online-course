@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     // Rate limiting
     const clientIp = getClientIp(request);
-    const rateLimit = checkRateLimit(`stripe:${clientIp}`, 5, 60000); // 1분에 5회
+    const rateLimit = await checkRateLimit(`stripe:${clientIp}`, 5, 60000); // 1분에 5회
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
@@ -128,7 +128,7 @@ export async function GET() {
   try {
     // Rate limiting
     const clientIp = getClientIp({ headers: new Headers() } as Request);
-    const rateLimit = checkRateLimit(`stripe-get:${clientIp}`, 20, 60000); // 1분에 20회
+    const rateLimit = await checkRateLimit(`stripe-get:${clientIp}`, 20, 60000); // 1분에 20회
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },

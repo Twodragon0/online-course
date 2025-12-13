@@ -2,17 +2,67 @@
  * 보안 유틸리티 함수들
  */
 
-// Rate limiting을 위한 간단한 메모리 기반 저장소
+import { redis } from '@/lib/redis';
+
+// Rate limiting을 위한 간단한 메모리 기반 저장소 (fallback)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 /**
- * Rate limiting 체크
+ * Redis 기반 Rate limiting 체크
  * @param identifier 요청 식별자 (IP 주소 또는 사용자 ID)
  * @param maxRequests 최대 요청 수
  * @param windowMs 시간 윈도우 (밀리초)
  * @returns rate limit 초과 여부
  */
-export function checkRateLimit(
+async function checkRateLimitRedis(
+  identifier: string,
+  maxRequests: number = 10,
+  windowMs: number = 60000 // 1분
+): Promise<{ allowed: boolean; remaining: number; resetTime: number } | null> {
+  try {
+    const key = `ratelimit:${identifier}`;
+    const now = Date.now();
+    const windowSeconds = Math.ceil(windowMs / 1000);
+
+    // 카운트 증가 (키가 없으면 생성)
+    const count = await redis.incr(key);
+    
+    // 키가 새로 생성된 경우 (count === 1) TTL 설정
+    if (count === 1) {
+      await redis.expire(key, windowSeconds);
+    }
+
+    // TTL 가져오기
+    const ttl = await redis.ttl(key);
+    const resetTime = now + (ttl > 0 ? ttl * 1000 : windowMs);
+
+    if (count > maxRequests) {
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime,
+      };
+    }
+
+    return {
+      allowed: true,
+      remaining: maxRequests - count,
+      resetTime,
+    };
+  } catch (error) {
+    console.error('Redis rate limit error:', error);
+    return null; // Redis 실패 시 null 반환하여 fallback 사용
+  }
+}
+
+/**
+ * 메모리 기반 Rate limiting 체크 (fallback)
+ * @param identifier 요청 식별자 (IP 주소 또는 사용자 ID)
+ * @param maxRequests 최대 요청 수
+ * @param windowMs 시간 윈도우 (밀리초)
+ * @returns rate limit 초과 여부
+ */
+function checkRateLimitMemory(
   identifier: string,
   maxRequests: number = 10,
   windowMs: number = 60000 // 1분
@@ -51,6 +101,28 @@ export function checkRateLimit(
     remaining: maxRequests - record.count,
     resetTime: record.resetTime,
   };
+}
+
+/**
+ * Rate limiting 체크 (Redis 우선, 실패 시 메모리 fallback)
+ * @param identifier 요청 식별자 (IP 주소 또는 사용자 ID)
+ * @param maxRequests 최대 요청 수
+ * @param windowMs 시간 윈도우 (밀리초)
+ * @returns rate limit 초과 여부
+ */
+export async function checkRateLimit(
+  identifier: string,
+  maxRequests: number = 10,
+  windowMs: number = 60000 // 1분
+): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+  // Redis 시도
+  const redisResult = await checkRateLimitRedis(identifier, maxRequests, windowMs);
+  if (redisResult !== null) {
+    return redisResult;
+  }
+
+  // Redis 실패 시 메모리 기반 fallback
+  return checkRateLimitMemory(identifier, maxRequests, windowMs);
 }
 
 /**
@@ -247,5 +319,49 @@ export function isValidStripePriceId(priceId: string): boolean {
   }
   // Stripe price ID 형식: price_xxxxx
   return /^price_[a-zA-Z0-9]{24,}$/.test(priceId);
+}
+
+/**
+ * Redis 캐시 헬퍼 함수
+ */
+export async function getCached<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttlSeconds: number = 300 // 기본 5분
+): Promise<T> {
+  try {
+    // 캐시에서 가져오기 시도
+    const cached = await redis.get(key);
+    if (cached) {
+      return JSON.parse(cached) as T;
+    }
+
+    // 캐시 미스 - 데이터 가져오기
+    const data = await fetcher();
+    
+    // 캐시에 저장 (set과 expire를 별도로 호출)
+    await redis.set(key, JSON.stringify(data));
+    await redis.expire(key, ttlSeconds);
+    
+    return data;
+  } catch (error) {
+    console.error('Cache error:', error);
+    // 캐시 실패 시 직접 데이터 가져오기
+    return await fetcher();
+  }
+}
+
+/**
+ * Redis 캐시 무효화
+ */
+export async function invalidateCache(pattern: string): Promise<void> {
+  try {
+    const keys = await redis.keys(pattern);
+    if (keys.length > 0) {
+      await Promise.all(keys.map(key => redis.del(key)));
+    }
+  } catch (error) {
+    console.error('Cache invalidation error:', error);
+  }
 }
 
