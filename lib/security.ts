@@ -58,11 +58,17 @@ export function checkRateLimit(
  */
 export function cleanupRateLimitStore() {
   const now = Date.now();
-  for (const [key, record] of rateLimitStore.entries()) {
+  const keysToDelete: string[] = [];
+  
+  rateLimitStore.forEach((record, key) => {
     if (now > record.resetTime) {
-      rateLimitStore.delete(key);
+      keysToDelete.push(key);
     }
-  }
+  });
+  
+  keysToDelete.forEach(key => {
+    rateLimitStore.delete(key);
+  });
 }
 
 // 주기적으로 정리 (5분마다)
