@@ -3,12 +3,118 @@ import type { NextRequest } from 'next/server';
 
 /**
  * 보안 미들웨어
- * - Rate limiting
+ * - SSRF 방지 (리다이렉트 URL 검증)
  * - CORS 헤더 설정
  * - 보안 헤더 추가
+ * - Authorization Bypass 방지
  */
+
+// 허용된 도메인 목록 (SSRF 방지)
+const ALLOWED_DOMAINS = [
+  'edu.2twodragon.com',
+  'twodragon.vercel.app',
+  'vercel.app',
+  'localhost',
+];
+
+/**
+ * URL이 안전한지 검증 (SSRF 방지)
+ */
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    
+    // 프로토콜 검증 (http, https만 허용)
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return false;
+    }
+    
+    // 내부 네트워크 접근 방지
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('172.16.') ||
+      hostname.startsWith('172.17.') ||
+      hostname.startsWith('172.18.') ||
+      hostname.startsWith('172.19.') ||
+      hostname.startsWith('172.20.') ||
+      hostname.startsWith('172.21.') ||
+      hostname.startsWith('172.22.') ||
+      hostname.startsWith('172.23.') ||
+      hostname.startsWith('172.24.') ||
+      hostname.startsWith('172.25.') ||
+      hostname.startsWith('172.26.') ||
+      hostname.startsWith('172.27.') ||
+      hostname.startsWith('172.28.') ||
+      hostname.startsWith('172.29.') ||
+      hostname.startsWith('172.30.') ||
+      hostname.startsWith('172.31.') ||
+      hostname === '[::1]' ||
+      hostname === '::1'
+    ) {
+      // localhost는 개발 환경에서만 허용
+      if (process.env.NODE_ENV === 'production') {
+        return false;
+      }
+    }
+    
+    // 허용된 도메인 확인
+    const isAllowed = ALLOWED_DOMAINS.some(domain => 
+      hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+    
+    return isAllowed;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 리다이렉트 URL 검증 (SSRF 방지)
+ */
+function validateRedirectUrl(url: string | null): string | null {
+  if (!url) return null;
+  
+  // 상대 경로는 항상 안전
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // 절대 URL은 검증 필요
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (isSafeUrl(url)) {
+      return url;
+    }
+    // 안전하지 않은 URL은 홈으로 리다이렉트
+    return '/';
+  }
+  
+  // 기타 프로토콜은 차단
+  return null;
+}
+
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
+
+  // SSRF 방지: 리다이렉트 URL 검증
+  const redirectUrl = request.nextUrl.searchParams.get('redirect') || 
+                      request.nextUrl.searchParams.get('callbackUrl') ||
+                      request.headers.get('x-redirect-url');
+  
+  if (redirectUrl) {
+    const safeRedirect = validateRedirectUrl(redirectUrl);
+    if (safeRedirect && safeRedirect !== redirectUrl) {
+      // 안전하지 않은 리다이렉트는 제거
+      const url = request.nextUrl.clone();
+      url.searchParams.delete('redirect');
+      url.searchParams.delete('callbackUrl');
+      return NextResponse.redirect(url);
+    }
+  }
 
   // CORS 헤더 설정 (필요한 경우)
   const origin = request.headers.get('origin');
@@ -18,17 +124,34 @@ export function middleware(request: NextRequest) {
     'https://twodragon.vercel.app',
   ].filter(Boolean) as string[];
 
-  if (origin && allowedOrigins.includes(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-    response.headers.set(
-      'Access-Control-Allow-Methods',
-      'GET, POST, PUT, DELETE, OPTIONS'
-    );
-    response.headers.set(
-      'Access-Control-Allow-Headers',
-      'Content-Type, Authorization'
-    );
+  // Origin 검증 (CORS 공격 방지)
+  if (origin) {
+    try {
+      const originUrl = new URL(origin);
+      const isAllowedOrigin = allowedOrigins.some(allowed => {
+        try {
+          const allowedUrl = new URL(allowed);
+          return originUrl.hostname === allowedUrl.hostname;
+        } catch {
+          return origin === allowed;
+        }
+      });
+      
+      if (isAllowedOrigin) {
+        response.headers.set('Access-Control-Allow-Origin', origin);
+        response.headers.set('Access-Control-Allow-Credentials', 'true');
+        response.headers.set(
+          'Access-Control-Allow-Methods',
+          'GET, POST, PUT, DELETE, OPTIONS'
+        );
+        response.headers.set(
+          'Access-Control-Allow-Headers',
+          'Content-Type, Authorization'
+        );
+      }
+    } catch {
+      // 잘못된 origin은 무시
+    }
   }
 
   // Content Security Policy
