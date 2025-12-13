@@ -10,7 +10,6 @@ import { getServerSession } from 'next-auth/next';
  * 파일 업로드 옵션
  */
 export interface UploadOptions {
-  access?: 'public' | 'private';
   contentType?: string;
   addRandomSuffix?: boolean;
   cacheControlMaxAge?: number;
@@ -55,11 +54,12 @@ export async function uploadFile(
     // 파일명 sanitization (보안)
     const sanitizedFilename = sanitizeFilename(filename);
 
-    // 기본 옵션 설정
+    // 기본 옵션 설정 (access는 항상 'public')
     const uploadOptions = {
       access: 'public' as const,
       addRandomSuffix: true,
-      ...options,
+      contentType: options.contentType,
+      cacheControlMaxAge: options.cacheControlMaxAge,
     };
 
     // 파일 업로드
@@ -70,8 +70,8 @@ export async function uploadFile(
       pathname: blob.pathname,
       contentType: blob.contentType,
       contentDisposition: blob.contentDisposition,
-      size: blob.size,
-      uploadedAt: blob.uploadedAt,
+      size: (blob as any).size ?? 0,
+      uploadedAt: (blob as any).uploadedAt ?? new Date(),
     };
   } catch (error) {
     console.error('File upload error:', error);
@@ -145,8 +145,8 @@ export async function listBlobFiles(
     return blobs.map((blob) => ({
       url: blob.url,
       pathname: blob.pathname,
-      contentType: blob.contentType,
-      contentDisposition: blob.contentDisposition,
+      contentType: (blob as any).contentType,
+      contentDisposition: (blob as any).contentDisposition,
       size: blob.size,
       uploadedAt: blob.uploadedAt,
     }));

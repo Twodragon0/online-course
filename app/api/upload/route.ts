@@ -83,7 +83,6 @@ export async function POST(request: NextRequest) {
 
     // 파일 업로드
     const result = await uploadFile(filename, buffer, {
-      access: 'public',
       contentType: file.type,
       addRandomSuffix: true,
     });
