@@ -7,7 +7,7 @@
     "build": "prisma generate && SKIP_ENV_VALIDATION=true next build",
     "start": "next start",
     "vercel-build": "prisma generate && SKIP_ENV_VALIDATION=true next build",
-    "postinstall": "prisma generate && npx update-browserslist-db@latest || true",
+    "postinstall": "prisma generate",
     "check-build": "npm run build",
     "type-check": "tsc --noEmit",
     "db:seed": "ts-node prisma/seed.ts"
@@ -59,13 +59,17 @@
     "prisma": "^6.19.1",
     "tailwindcss": "^3.4.19",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "update-browserslist-db": "^1.2.2"
   },
   "overrides": {
     "glob": "^10.5.0",
     "js-yaml": "^4.1.1",
     "brace-expansion": "^2.0.2",
-    "rimraf": "^4.0.0"
+    "rimraf": "^4.0.0",
+    "npmlog": "^7.0.0",
+    "are-we-there-yet": "^4.0.0",
+    "gauge": "^5.0.0"
   },
   "resolutions": {
     "glob": "^10.5.0",
