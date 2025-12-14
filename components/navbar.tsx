@@ -37,7 +37,7 @@ export function Navbar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="touch-manipulation"
                 aria-label="Open menu"
               >
                 <Menu className="h-6 w-6" />

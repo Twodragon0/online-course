@@ -128,3 +128,4 @@ const data = await getCached(
 - [Upstash 문서](https://docs.upstash.com/)
 - [Redis 명령어 참조](https://redis.io/commands)
 
+

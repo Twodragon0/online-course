@@ -5,10 +5,12 @@
 
 import { createClient, RedisClientType } from 'redis';
 
-let redisClient: RedisClientType | null = null;
+type RedisClient = ReturnType<typeof createClient>;
+
+let redisClient: RedisClient | null = null;
 let isConnecting = false;
 
-const globalForRedis = global as unknown as { redis: RedisClientType | null };
+const globalForRedis = global as unknown as { redis: RedisClient | null };
 
 /**
  * Redis URL 검증
@@ -29,7 +31,7 @@ function validateRedisUrl(): boolean {
 /**
  * Redis 클라이언트 생성 (lazy initialization)
  */
-async function getRedisClient(): Promise<RedisClientType | null> {
+async function getRedisClient(): Promise<RedisClient | null> {
   // 빌드 시점에는 Redis를 생성하지 않음
   if (process.env.NEXT_PHASE === 'phase-production-build') {
     return null;
@@ -94,7 +96,7 @@ async function getRedisClient(): Promise<RedisClientType | null> {
     // 연결
     await client.connect();
 
-    redisClient = client;
+    redisClient = client as RedisClient;
 
     // 개발 환경에서는 전역에 저장 (핫 리로드 대응)
     if (process.env.NODE_ENV !== 'production') {
