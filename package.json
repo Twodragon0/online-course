@@ -7,7 +7,9 @@
     "build": "prisma generate && SKIP_ENV_VALIDATION=true next build",
     "start": "next start",
     "vercel-build": "prisma generate && SKIP_ENV_VALIDATION=true next build",
-    "postinstall": "prisma generate && npx update-browserslist-db@latest || true"
+    "postinstall": "prisma generate && npx update-browserslist-db@latest || true",
+    "check-build": "npm run build",
+    "type-check": "tsc --noEmit"
   },
   "engines": {
     "node": ">=18.17.0"

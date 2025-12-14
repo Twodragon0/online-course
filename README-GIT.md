@@ -61,8 +61,29 @@ git add app/page.tsx components/navbar.tsx
 # 커밋
 git commit -m "feat: Add new feature"
 
+# ⚠️ 푸시 전 빌드 체크 (권장)
+./scripts/pre-push-check.sh
+
+# 또는 npm 스크립트 사용
+npm run type-check && npm run build
+
 # 푸시
 git push origin main
+```
+
+### 푸시 전 빌드 체크
+
+Vercel 배포 에러를 방지하기 위해 푸시 전에 빌드를 체크하는 것을 강력히 권장합니다:
+
+```bash
+# 방법 1: 스크립트 사용 (권장)
+./scripts/pre-push-check.sh
+
+# 방법 2: npm 스크립트 사용
+npm run type-check && npm run build
+
+# 방법 3: 타입 체크만
+npm run type-check
 ```
 
 ### 브랜치 작업
