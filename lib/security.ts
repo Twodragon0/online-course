@@ -358,7 +358,7 @@ export async function invalidateCache(pattern: string): Promise<void> {
   try {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
-      await Promise.all(keys.map(key => redis.del(key)));
+      await Promise.all(keys.map((key: string) => redis.del(key)));
     }
   } catch (error) {
     console.error('Cache invalidation error:', error);
