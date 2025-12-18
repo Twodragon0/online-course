@@ -72,6 +72,7 @@ model Video {
   title       String
   description String?
   url         String
+  driveFileId String?  // Google Drive 파일 ID (선택적, url에서 자동 추출 가능)
   courseId    String
   course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   chats       Chat[]

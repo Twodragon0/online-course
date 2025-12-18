@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { getShareUrl } from '@/lib/video-utils';
 
 interface ResourceViewerProps {
   resource: {
@@ -16,11 +17,8 @@ export function ResourceViewer({ resource, type }: ResourceViewerProps) {
   const handleAccess = async () => {
     setIsLoading(true);
     try {
-      // Google Drive 파일 ID 추출
-      const fileId = resource.url.split('id=')[1];
-      
       // Google Drive 공유 링크 생성
-      const shareableLink = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+      const shareableLink = getShareUrl(resource.url);
       
       // 새 탭에서 열기
       window.open(shareableLink, '_blank');

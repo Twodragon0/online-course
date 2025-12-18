@@ -1,0 +1,83 @@
+service: scholar-video-share
+
+frameworkVersion: '3'
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: ap-northeast-2
+  stage: ${opt:stage, 'dev'}
+  deploymentBucket:
+    name: bjchoi-serverless-deploy
+  timeout: 30
+  memorySize: 256
+  environment:
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}
+    SLACK_CHANNEL_ID: ${env:SLACK_CHANNEL_ID}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource:
+            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${self:service}-${self:provider.stage}-shareProcessor
+
+functions:
+  share:
+    handler: handler.handler
+    timeout: 10
+    environment:
+      PROCESSOR_FUNCTION_NAME: !Ref ShareProcessorLambdaFunction
+    events:
+      - http:
+          path: /share
+          method: post
+          cors: true
+
+  shareProcessor:
+    handler: handler.process_handler
+    timeout: 900
+    memorySize: 512
+    events:
+      - schedule:
+          method: scheduler
+          rate: cron(30 11 ? * SAT *)  # 매주 토요일 11:30 KST
+          timezone: Asia/Seoul
+          enabled: true
+
+plugins:
+  - serverless-python-requirements
+  - serverless-dotenv-plugin
+
+custom:
+  pythonRequirements:
+    dockerizePip: non-linux
+    slim: true
+    strip: true
+    slimPatternsAppendDefaults: true
+    slimPatterns:
+      - "**/*.pyc"
+      - "**/__pycache__/**"
+      - "**/tests/**"
+      - "**/test/**"
+      - "**/*.egg-info/**"
+  dotenv:
+    path: .env.${self:provider.stage}
+    include:
+      - SLACK_BOT_TOKEN
+      - SLACK_CHANNEL_ID
+
+package:
+  patterns:
+    - '!node_modules/**'
+    - '!__pycache__/**'
+    - '!.serverless/**'
+    - '!.env'
+    - '!.env.example'
+    - '!package*.json'
+    - 'handler.py'
+    - 'services/**'
+    - 'data/**'

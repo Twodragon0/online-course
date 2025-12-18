@@ -1,0 +1,110 @@
+"""Slack 메시지 발송 서비스."""
+
+import os
+import requests
+
+
+def get_slack_config() -> dict:
+    """Slack 설정 가져오기."""
+    return {
+        "token": os.environ.get("SLACK_BOT_TOKEN"),
+        "channel": os.environ.get("SLACK_CHANNEL_ID")
+    }
+
+
+def send_message(message: str | dict, channel: str = None) -> dict:
+    """Slack 채널에 메시지 발송.
+
+    Args:
+        message: 발송할 메시지 (문자열 또는 Block Kit dict)
+        channel: 채널 ID (없으면 환경변수 사용)
+
+    Returns:
+        Slack API 응답
+    """
+    config = get_slack_config()
+    token = config["token"]
+    channel_id = channel or config["channel"]
+
+    if not token:
+        raise ValueError("SLACK_BOT_TOKEN 환경변수가 설정되지 않았습니다.")
+
+    if not channel_id:
+        raise ValueError("SLACK_CHANNEL_ID 환경변수가 설정되지 않았습니다.")
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    # Block Kit 형식 또는 일반 텍스트
+    if isinstance(message, dict):
+        payload = {
+            "channel": channel_id,
+            "blocks": message.get("blocks", []),
+            "text": message.get("text", "")  # fallback
+        }
+    else:
+        payload = {
+            "channel": channel_id,
+            "text": message,
+            "mrkdwn": True
+        }
+
+    response = requests.post(
+        "https://slack.com/api/chat.postMessage",
+        headers=headers,
+        json=payload
+    )
+
+    result = response.json()
+
+    if not result.get("ok"):
+        raise Exception(f"Slack 메시지 발송 실패: {result.get('error')}")
+
+    return result
+
+
+def send_to_response_url(response_url: str, message: str) -> dict:
+    """Slack response_url로 메시지 발송.
+
+    Args:
+        response_url: Slack response URL
+        message: 발송할 메시지
+
+    Returns:
+        응답 결과
+    """
+    if not response_url:
+        return {"ok": False, "error": "response_url이 없습니다."}
+
+    payload = {
+        "response_type": "ephemeral",
+        "text": message
+    }
+
+    response = requests.post(response_url, json=payload)
+
+    if response.status_code != 200:
+        raise Exception(f"response_url 발송 실패: {response.text}")
+
+    return {"ok": True}
+
+
+def send_error_message(error: str, context: dict = None) -> dict:
+    """에러 메시지 발송.
+
+    Args:
+        error: 에러 메시지
+        context: 추가 컨텍스트 정보
+
+    Returns:
+        Slack API 응답
+    """
+    message = f"⚠️ **오류 발생**\n\n```{error}```"
+
+    if context:
+        context_str = "\n".join([f"- {k}: {v}" for k, v in context.items()])
+        message += f"\n\n**컨텍스트:**\n{context_str}"
+
+    return send_message(message)
