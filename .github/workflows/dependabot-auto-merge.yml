@@ -2,7 +2,7 @@ name: Dependabot Auto-merge
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   auto-merge:
@@ -34,10 +34,36 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: true
 
+      - name: Check PR labels
+        id: check-labels
+        run: |
+          # 보안 업데이트는 자동 머지
+          if echo "${{ github.event.pull_request.labels }}" | grep -q '"name":"dependencies"'; then
+            echo "auto_merge=true" >> $GITHUB_OUTPUT
+          else
+            echo "auto_merge=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Auto-merge PR
-        if: success()
+        if: steps.check-labels.outputs.auto_merge == 'true' && success()
         uses: fastify/github-action-merge-dependabot@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           target: minor
           merge-method: squash
+          # 보안 업데이트만 자동 머지
+          merge-filter: |
+            label:dependencies
+            -label:security
+
+      - name: Comment on PR
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ 자동 머지 실패: 빌드 또는 테스트가 실패했습니다. 수동으로 검토해주세요.'
+            })

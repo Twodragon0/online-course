@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 보안 취약점 보고
+    url: https://github.com/Twodragon0/online-course/security/advisories/new
+    about: 보안 취약점을 비공개로 보고해주세요
+  - name: 질문 및 지원
+    url: https://github.com/Twodragon0/online-course/discussions
+    about: 질문이나 도움이 필요하신가요? Discussions를 사용해주세요

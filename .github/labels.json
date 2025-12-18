@@ -1,0 +1,92 @@
+[
+  {
+    "name": "priority: critical",
+    "color": "d73a4a",
+    "description": "즉시 처리 필요"
+  },
+  {
+    "name": "priority: high",
+    "color": "e99695",
+    "description": "빠른 처리 필요"
+  },
+  {
+    "name": "priority: medium",
+    "color": "fbca04",
+    "description": "일반 처리"
+  },
+  {
+    "name": "priority: low",
+    "color": "0e8a16",
+    "description": "나중에 처리"
+  },
+  {
+    "name": "bug",
+    "color": "d73a4a",
+    "description": "버그 리포트"
+  },
+  {
+    "name": "enhancement",
+    "color": "a2eeef",
+    "description": "기능 제안"
+  },
+  {
+    "name": "documentation",
+    "color": "0075ca",
+    "description": "문서 개선"
+  },
+  {
+    "name": "security",
+    "color": "b60205",
+    "description": "보안 관련"
+  },
+  {
+    "name": "dependencies",
+    "color": "0366d6",
+    "description": "의존성 업데이트"
+  },
+  {
+    "name": "dependabot",
+    "color": "0366d6",
+    "description": "Dependabot 자동 생성"
+  },
+  {
+    "name": "refactoring",
+    "color": "c5def5",
+    "description": "리팩토링"
+  },
+  {
+    "name": "in-progress",
+    "color": "fbca04",
+    "description": "작업 중"
+  },
+  {
+    "name": "review",
+    "color": "0e8a16",
+    "description": "리뷰 대기"
+  },
+  {
+    "name": "blocked",
+    "color": "d73a4a",
+    "description": "차단됨"
+  },
+  {
+    "name": "wontfix",
+    "color": "ffffff",
+    "description": "수정하지 않음"
+  },
+  {
+    "name": "good first issue",
+    "color": "7057ff",
+    "description": "초보자에게 좋은 이슈"
+  },
+  {
+    "name": "help wanted",
+    "color": "008672",
+    "description": "도움 필요"
+  },
+  {
+    "name": "automated",
+    "color": "bfe5bf",
+    "description": "자동화된 작업"
+  }
+]

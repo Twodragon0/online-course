@@ -7,27 +7,41 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
+    # PR 제한을 낮춰서 관리 가능하게 유지
+    open-pull-requests-limit: 5
     reviewers:
       - "Twodragon0"
     labels:
       - "dependencies"
       - "automated"
+      - "dependabot"
     commit-message:
       prefix: "chore"
       include: "scope"
-    # Group minor and patch updates together
+    # 그룹화를 더 효과적으로 사용하여 PR 수 감소
     groups:
+      # 프로덕션 의존성을 하나의 PR로 그룹화
       production-dependencies:
         dependency-type: "production"
         update-types:
           - "minor"
           - "patch"
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+      # 개발 의존성을 하나의 PR로 그룹화
       development-dependencies:
         dependency-type: "development"
         update-types:
           - "minor"
           - "patch"
+      # 보안 업데이트는 별도로 처리 (우선순위 높음)
+      security-updates:
+        update-types:
+          - "security"
     # Ignore major version updates for critical packages
     ignore:
       - dependency-name: "next"
@@ -35,4 +49,8 @@ updates:
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "prisma"
         update-types: ["version-update:semver-major"]
