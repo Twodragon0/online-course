@@ -1,7 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
+import { Play, ExternalLink } from "lucide-react";
+import { getDriveFileLink } from '@/lib/google-drive-client';
 
 interface VideoCardProps {
   id: string;
@@ -12,9 +15,12 @@ interface VideoCardProps {
 
 export function VideoCard({ id, title, description, driveFileId }: VideoCardProps) {
   const { data: session } = useSession();
+  const [iframeError, setIframeError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Google Drive 파일 ID로부터 임베드 URL 생성
-  const embedUrl = `https://drive.google.com/file/d/${driveFileId}/preview`;
+  const embedUrl = getDriveFileLink(driveFileId, 'preview');
+  const viewUrl = getDriveFileLink(driveFileId, 'view');
 
   if (!session) {
     return (
@@ -42,12 +48,58 @@ export function VideoCard({ id, title, description, driveFileId }: VideoCardProp
   return (
     <div className="group relative rounded-xl border bg-card p-6 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 hover:border-primary/50">
       <div className="aspect-video relative rounded-lg overflow-hidden mb-4 bg-muted">
-        <iframe
-          src={embedUrl}
-          className="absolute inset-0 w-full h-full"
-          allow="autoplay"
-          allowFullScreen
-        />
+        {iframeError ? (
+          // iframe 로드 실패 시 대체 UI
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 p-6">
+            <div className="text-center space-y-4">
+              <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto">
+                <Play className="w-10 h-10 text-primary ml-1" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">동영상을 재생할 수 없습니다</p>
+                <p className="text-xs text-muted-foreground">
+                  Google Drive에서 직접 확인해주세요
+                </p>
+              </div>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="mt-2"
+              >
+                <a
+                  href={viewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Google Drive에서 보기
+                </a>
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            )}
+            <iframe
+              src={embedUrl}
+              className="absolute inset-0 w-full h-full"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              onLoad={() => setIsLoading(false)}
+              onError={() => {
+                setIframeError(true);
+                setIsLoading(false);
+              }}
+              style={{ display: isLoading ? 'none' : 'block' }}
+            />
+          </>
+        )}
       </div>
       <div className="space-y-3">
         <h3 className="text-xl font-semibold line-clamp-2 group-hover:text-primary transition-colors">{title}</h3>
