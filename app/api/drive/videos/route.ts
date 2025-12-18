@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getWeekVideos, getAllWeekVideos, getVideosInFolder, extractFileIdFromUrl, getDriveFileLink } from '@/lib/google-drive';
+import { getWeekVideos, getAllWeekVideos, getVideosInFolder } from '@/lib/google-drive';
+import { getDriveFileLink } from '@/lib/google-drive-client';
 import { checkRateLimit, getClientIp } from '@/lib/security';
 
 /**

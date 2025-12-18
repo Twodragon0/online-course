@@ -1,8 +1,9 @@
 /**
  * 동영상 관련 유틸리티 함수
+ * 클라이언트와 서버 모두에서 사용 가능
  */
 
-import { extractFileIdFromUrl, getDriveFileLink } from './google-drive';
+import { extractFileIdFromUrl, getDriveFileLink } from './google-drive-client';
 
 /**
  * Google Drive URL에서 파일 ID 추출

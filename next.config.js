@@ -20,7 +20,29 @@ const nextConfig = {
   },
   // Server Components DoS 방지
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client'],
+    serverComponentsExternalPackages: ['@prisma/client', 'googleapis', 'google-auth-library'],
+  },
+  // Webpack 설정: Node.js 모듈을 서버 사이드에서만 사용
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // 클라이언트 사이드 빌드에서 Node.js 모듈 제외
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        url: false,
+        zlib: false,
+        http: false,
+        https: false,
+        assert: false,
+        os: false,
+        path: false,
+      };
+    }
+    return config;
   },
   async headers() {
     return [
