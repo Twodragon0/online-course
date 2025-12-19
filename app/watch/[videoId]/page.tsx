@@ -1,11 +1,9 @@
-import { PrismaClient } from '@prisma/client';
 import { notFound } from 'next/navigation';
 import { VideoPlayer } from '@/components/video-player';
 import { ChatBot } from '@/components/chat-bot';
 import { Button } from '@/components/ui/button';
 import { Book } from 'lucide-react';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 interface PageProps {
   params: {
@@ -14,14 +12,27 @@ interface PageProps {
 }
 
 export default async function VideoPage({ params }: PageProps) {
-  const video = await prisma.video.findUnique({
-    where: {
-      id: params.videoId,
-    },
-    include: {
-      course: true,
-    },
-  });
+  // DATABASE_URL 검증
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl || (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://') && !dbUrl.startsWith('postgresql+pooler://'))) {
+    console.error('[Video Page] DATABASE_URL is not configured or invalid');
+    notFound();
+  }
+
+  let video;
+  try {
+    video = await prisma.video.findUnique({
+      where: {
+        id: params.videoId,
+      },
+      include: {
+        course: true,
+      },
+    });
+  } catch (error) {
+    console.error('[Video Page] Failed to fetch video:', error);
+    notFound();
+  }
 
   if (!video) {
     notFound();
@@ -52,14 +63,30 @@ export default async function VideoPage({ params }: PageProps) {
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const video = await prisma.video.findUnique({
-    where: {
-      id: params.videoId,
-    },
-    include: {
-      course: true,
-    },
-  });
+  // DATABASE_URL 검증
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl || (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://') && !dbUrl.startsWith('postgresql+pooler://'))) {
+    return {
+      title: 'Video Not Found',
+    };
+  }
+
+  let video;
+  try {
+    video = await prisma.video.findUnique({
+      where: {
+        id: params.videoId,
+      },
+      include: {
+        course: true,
+      },
+    });
+  } catch (error) {
+    console.error('[Video Metadata] Failed to fetch video:', error);
+    return {
+      title: 'Video Not Found',
+    };
+  }
 
   if (!video) {
     return {

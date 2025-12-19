@@ -27,15 +27,18 @@ export async function GET(request: Request) {
       return NextResponse.json([]);
     }
 
-    if (!prisma) {
-      console.warn('[Videos API] Prisma not available, returning empty array');
-      return NextResponse.json([], {
-        headers: {
-          'X-RateLimit-Limit': '30',
-          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-        },
-      });
+    // DATABASE_URL 검증
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl || (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://') && !dbUrl.startsWith('postgresql+pooler://'))) {
+      console.error('[Videos API] DATABASE_URL is not configured or invalid');
+      console.error('[Videos API] DATABASE_URL format:', dbUrl ? `${dbUrl.substring(0, 20)}...` : 'not set');
+      return NextResponse.json(
+        { error: '데이터베이스가 설정되지 않았습니다. 관리자에게 문의해주세요.' },
+        { status: 503 }
+      );
     }
+
+    // Prisma 사용 가능 여부 확인 (에러 처리)
     
     // Redis 캐싱 적용 (5분 TTL)
     const videos = await getCached(

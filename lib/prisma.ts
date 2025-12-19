@@ -63,6 +63,14 @@ function getPrisma() {
   return prismaInstance;
 }
 
+// Prisma 클라이언트가 사용 가능한지 확인하는 헬퍼 함수
+export function isPrismaAvailable(): boolean {
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return false;
+  }
+  return validateDatabaseUrl() && getPrisma() !== null;
+}
+
 // Prisma 클라이언트를 Proxy로 래핑하여 lazy initialization 구현
 export const prisma = new Proxy({} as PrismaClientType, {
   get(_target, prop) {
@@ -70,6 +78,11 @@ export const prisma = new Proxy({} as PrismaClientType, {
     if (!client) {
       // 빌드 시점이나 DATABASE_URL이 없을 때는 더미 객체 반환
       if (process.env.NEXT_PHASE === 'phase-production-build') {
+        return () => Promise.resolve([]);
+      }
+      // 프로덕션 환경에서는 에러를 throw하지 않고 null을 반환하는 함수 제공
+      if (process.env.NODE_ENV === 'production') {
+        // 더미 함수 반환 (에러 방지)
         return () => Promise.resolve([]);
       }
       throw new Error('Prisma Client is not initialized. DATABASE_URL is required.');
