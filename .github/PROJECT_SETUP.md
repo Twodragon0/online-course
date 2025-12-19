@@ -152,3 +152,4 @@ jobs:
 - [GitHub Projects 문서](https://docs.github.com/en/issues/planning-and-tracking-with-projects)
 - [GitHub Projects 자동화](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project)
 - [이슈 및 PR 템플릿](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests)
+

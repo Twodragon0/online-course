@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, FileText, Share2, Bookmark, X, Facebook, Twitter, Instagram } from 'lucide-react';
 import { toast } from 'sonner';
-import { getEmbedUrl } from '@/lib/video-utils';
 import {
   Dialog,
   DialogContent,
@@ -41,7 +40,8 @@ export function VideoSummary({ video, courseType }: VideoSummaryProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   const getVideoUrl = (url: string) => {
-    return getEmbedUrl(url);
+    const fileId = url.split('/d/')[1]?.split('/')[0];
+    return `https://drive.google.com/file/d/${fileId}/preview`;
   };
 
   const handleVideoAccess = () => {

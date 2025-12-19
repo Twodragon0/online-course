@@ -49,3 +49,4 @@ jobs:
               repo: context.repo.repo,
               body: '🚫 이 이슈는 차단되었습니다. 추가 정보가 필요하면 댓글로 알려주세요.'
             })
+

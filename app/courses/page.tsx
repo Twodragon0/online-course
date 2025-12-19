@@ -1,15 +1,11 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Pagination } from '@/components/pagination';
 import { VideoCard } from '@/components/video-card';
 import { useSession } from "next-auth/react";
 
-const ITEMS_PER_PAGE = 2;
-
 interface Video {
-  driveFileId: string;
+  driveFileId?: string;
   id: string;
   title: string;
   description: string | null;
@@ -20,6 +16,15 @@ interface Video {
     id: string;
     title: string;
   };
+}
+
+interface Course {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  imageUrl: string | null;
+  videos: Video[];
 }
 
 interface Section {
@@ -34,56 +39,63 @@ interface Section {
 
 function CoursesContent() {
   const { data: session } = useSession();
-  const searchParams = useSearchParams();
+  const [courses, setCourses] = useState<Course[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchVideos = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/videos');
-        const data = await response.json();
+        // 코스와 비디오를 모두 가져오기
+        const [coursesResponse, videosResponse] = await Promise.all([
+          fetch('/api/courses'),
+          fetch('/api/videos'),
+        ]);
+        
+        const coursesData = await coursesResponse.json();
+        const videosData = await videosResponse.json();
+        
         // 배열 확인 및 타입 검증
-        setVideos(Array.isArray(data) ? data : []);
+        setCourses(Array.isArray(coursesData) ? coursesData : []);
+        setVideos(Array.isArray(videosData) ? videosData : []);
       } catch (error) {
-        console.error('Failed to fetch videos:', error);
-        setVideos([]); // 오류 시 빈 배열로 초기화
+        console.error('Failed to fetch courses/videos:', error);
+        setCourses([]);
+        setVideos([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchVideos();
+    fetchData();
   }, []);
 
-  // 페이지네이션 로직 안전하게 처리
-  const currentPage = Number(searchParams?.get('page') ?? '1');
-  const totalPages = Math.ceil((videos?.length || 0) / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  // 옵셔널 체이닝으로 안전하게 처리
-  const paginatedVideos = videos?.slice?.(startIndex, startIndex + ITEMS_PER_PAGE) || [];
-
-  const sections = [
+  // 모든 코스를 섹션으로 변환
+  const sections: Section[] = [
+    // 하드코딩된 DevSecOps 섹션
     {
       id: 'devsecops',
       title: '🛡️ DevSecOps 과정',
       description: '클라우드 보안과 DevSecOps 기초 학습',
+      videos: [],
       driveFileIds: {
         'intro': '1er3p4BdWsYmeLUuhMshS10EImWYvWWcU'
       }
     },
-    {
-      id: 'aws',
-      title: '☁️ AWS 보안 실습',
-      description: 'AWS 클라우드 환경의 보안 설정 실습',
-      videos: paginatedVideos.filter(video => video.courseId === 'aws-course'),
-    },
-    {
-      id: 'docker',
-      title: '🐳 Docker 실습',
-      description: 'Docker를 활용한 컨테이너 보안 실습',
-      videos: paginatedVideos.filter(video => video.courseId === 'docker-course'),
-    },
+    // 데이터베이스에서 가져온 코스들
+    ...courses.map(course => ({
+      id: course.id,
+      title: course.title,
+      description: course.description || '',
+      videos: course.videos.sort((a, b) => a.position - b.position),
+    })),
+    // 코스에 속하지 않은 비디오들도 표시
+    ...(videos.filter(v => !courses.some(c => c.id === v.courseId)).length > 0 ? [{
+      id: 'other',
+      title: '📚 기타 비디오',
+      description: '다양한 학습 자료',
+      videos: videos.filter(v => !courses.some(c => c.id === v.courseId)),
+    }] : []),
   ];
 
   if (loading) {
@@ -130,13 +142,13 @@ function CoursesContent() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {section.videos && section.videos.map((video) => (
+              {section.videos && section.videos.length > 0 && section.videos.map((video) => (
                 <VideoCard
                   key={video.id}
                   id={video.id}
                   title={video.title}
                   description={video.description}
-                  driveFileId={video.driveFileId}
+                  driveFileId={video.driveFileId || video.url}
                 />
               ))}
               {section.driveFileIds && Object.entries(section.driveFileIds).map(([key, fileId]) => (
@@ -148,18 +160,15 @@ function CoursesContent() {
                   driveFileId={fileId}
                 />
               ))}
+              {(!section.videos || section.videos.length === 0) && (!section.driveFileIds || Object.keys(section.driveFileIds).length === 0) && (
+                <div className="col-span-full text-center py-8 text-muted-foreground">
+                  이 코스에는 아직 비디오가 없습니다.
+                </div>
+              )}
             </div>
           </section>
         ))}
 
-        {videos.length > ITEMS_PER_PAGE && (
-          <div className="flex justify-center pt-8">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

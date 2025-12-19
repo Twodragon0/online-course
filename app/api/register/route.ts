@@ -29,9 +29,18 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!prisma) {
+    // Prisma 클라이언트 확인 (Proxy이므로 직접 체크 불가, 사용 시 에러 처리)
+    try {
+      // Prisma 클라이언트가 사용 가능한지 확인하기 위해 간단한 테스트
+      if (typeof prisma === 'undefined' || prisma === null) {
+        return NextResponse.json(
+          { error: 'Database not configured' },
+          { status: 503 }
+        );
+      }
+    } catch (error) {
       return NextResponse.json(
-        { error: 'Database not configured' },
+        { error: 'Database connection error' },
         { status: 503 }
       );
     }

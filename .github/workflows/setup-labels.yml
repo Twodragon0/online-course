@@ -49,3 +49,4 @@ jobs:
                 console.log(`Created label: ${label.name}`);
               }
             }
+

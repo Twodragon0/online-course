@@ -37,8 +37,11 @@ function validateAuthEnv(): { valid: boolean; errors: string[] } {
     errors.push('NEXTAUTH_SECRET must be at least 32 characters');
   }
 
+  // NEXTAUTH_URL이 없어도 동적으로 처리할 수 있도록 경고만 출력
   if (!nextAuthUrl || nextAuthUrl.trim().length === 0) {
-    errors.push('NEXTAUTH_URL is required');
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('NEXTAUTH_URL이 설정되지 않았습니다. 요청 호스트를 기반으로 동적으로 설정됩니다.');
+    }
   } else if (!nextAuthUrl.startsWith('https://') && process.env.NODE_ENV === 'production') {
     errors.push('NEXTAUTH_URL must use HTTPS in production');
   }

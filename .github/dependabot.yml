@@ -54,3 +54,4 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "prisma"
         update-types: ["version-update:semver-major"]
+
