@@ -61,7 +61,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
+    // 요청 본문 파싱
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('[Chat API] Failed to parse request body:', parseError);
+      return NextResponse.json(
+        { error: '요청 형식이 올바르지 않습니다.' },
+        { status: 400 }
+      );
+    }
     const { message: rawMessage, category: rawCategory, sessionId: rawSessionId } = body;
 
     // 입력 검증
@@ -94,14 +104,23 @@ export async function POST(request: Request) {
       ? sanitizeInput(rawSessionId)
       : 'general';
 
-    // 관련 이전 대화 검색
-    const relevantResponses = await findRelevantResponses(message);
-    const contextMessages = relevantResponses
-      .filter((log: ChatLog) => log.response !== null)
-      .map((log: ChatLog) => ({
-        role: "assistant" as const,
-        content: log.response as string
-      }));
+    // 관련 이전 대화 검색 (Prisma 사용 가능한 경우만)
+    let contextMessages: Array<{ role: "assistant" | "user" | "system"; content: string }> = [];
+    try {
+      const dbUrl = process.env.DATABASE_URL;
+      if (dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql+pooler://'))) {
+        const relevantResponses = await findRelevantResponses(message);
+        contextMessages = relevantResponses
+          .filter((log: ChatLog) => log.response !== null)
+          .map((log: ChatLog) => ({
+            role: "assistant" as const,
+            content: log.response as string
+          }));
+      }
+    } catch (dbError) {
+      console.warn('[Chat API] Failed to fetch context messages:', dbError instanceof Error ? dbError.message : 'Unknown error');
+      // 데이터베이스 에러는 무시하고 계속 진행 (컨텍스트 없이 응답)
+    }
 
     // AI 서비스 선택 (비용 최적화: DeepSeek 우선, 없으면 Gemini)
     const useDeepSeek = process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.startsWith('sk-');
@@ -298,54 +317,41 @@ export async function POST(request: Request) {
       // AI 응답도 sanitization (XSS 방지)
       const sanitizedResponse = sanitizeInput(aiResponse);
 
-      // 응답 저장
-      if (!prisma) {
-        return NextResponse.json({
-          response: sanitizedResponse,
-          logId: null,
-          provider: 'deepseek'
-        }, {
-          headers: {
-            'X-RateLimit-Limit': '20',
-            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-          },
-        });
-      }
-      
+      // 응답 저장 (Prisma 사용 가능한 경우만)
+      let logId: string | null = null;
       try {
-        const chatLog = await prisma.chatLog.create({
-          data: {
-            sessionId,
-            message,
-            response: sanitizedResponse,
-            category,
+        const dbUrl = process.env.DATABASE_URL;
+        if (dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql+pooler://'))) {
+          try {
+            const chatLog = await prisma.chatLog.create({
+              data: {
+                sessionId,
+                message,
+                response: sanitizedResponse,
+                category,
+              }
+            });
+            logId = chatLog.id;
+          } catch (dbError) {
+            // 데이터베이스 오류는 로깅만 하고 응답은 반환
+            console.warn('[Chat API] Failed to save chat log:', dbError instanceof Error ? dbError.message : 'Unknown error');
           }
-        });
-
-        return NextResponse.json({
-          response: sanitizedResponse,
-          logId: chatLog.id,
-          provider: 'deepseek'
-        }, {
-          headers: {
-            'X-RateLimit-Limit': '20',
-            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-          },
-        });
-        } catch (dbError) {
-          // 데이터베이스 오류는 로깅만 하고 응답은 반환
-          console.error('Database error:', dbError instanceof Error ? dbError.message : 'Unknown error');
-          return NextResponse.json({
-            response: sanitizedResponse,
-            logId: null,
-            provider: 'deepseek'
-          }, {
-            headers: {
-              'X-RateLimit-Limit': '20',
-              'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-            },
-          });
         }
+      } catch (prismaError) {
+        // Prisma 초기화 에러는 무시
+        console.warn('[Chat API] Prisma not available for logging');
+      }
+
+      return NextResponse.json({
+        response: sanitizedResponse,
+        logId,
+        provider: 'deepseek'
+      }, {
+        headers: {
+          'X-RateLimit-Limit': '20',
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        },
+      });
         } catch (fetchError) {
           clearTimeout(timeoutId);
           
@@ -411,36 +417,34 @@ export async function POST(request: Request) {
         console.log('[Chat API] Successfully received response from Gemini, length:', aiResponse.length);
         const sanitizedResponse = sanitizeInput(aiResponse);
 
-        // 응답 저장
-        if (prisma) {
-          try {
-            const chatLog = await prisma.chatLog.create({
-              data: {
-                sessionId,
-                message,
-                response: sanitizedResponse,
-                category,
-              }
-            });
-
-            return NextResponse.json({
-              response: sanitizedResponse,
-              logId: chatLog.id,
-              provider: 'gemini'
-            }, {
-              headers: {
-                'X-RateLimit-Limit': '20',
-                'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-              },
-            });
-          } catch (dbError) {
-            console.error('Database error:', dbError instanceof Error ? dbError.message : 'Unknown error');
+        // 응답 저장 (Prisma 사용 가능한 경우만)
+        let logId: string | null = null;
+        try {
+          const dbUrl = process.env.DATABASE_URL;
+          if (dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql+pooler://'))) {
+            try {
+              const chatLog = await prisma.chatLog.create({
+                data: {
+                  sessionId,
+                  message,
+                  response: sanitizedResponse,
+                  category,
+                }
+              });
+              logId = chatLog.id;
+            } catch (dbError) {
+              // 데이터베이스 오류는 로깅만 하고 응답은 반환
+              console.warn('[Chat API] Failed to save chat log:', dbError instanceof Error ? dbError.message : 'Unknown error');
+            }
           }
+        } catch (prismaError) {
+          // Prisma 초기화 에러는 무시
+          console.warn('[Chat API] Prisma not available for logging');
         }
 
         return NextResponse.json({
           response: sanitizedResponse,
-          logId: null,
+          logId,
           provider: 'gemini'
         }, {
           headers: {
@@ -457,14 +461,52 @@ export async function POST(request: Request) {
       }
     }
   } catch (error) {
+    // 에러 타입별 처리
+    const errorName = error instanceof Error ? error.name : 'Unknown';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
     console.error('[Chat API] Unexpected error:', {
-      name: error instanceof Error ? error.name : 'Unknown',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      name: errorName,
+      message: errorMessage,
+      stack: errorStack
     });
+
+    // 구체적인 에러 메시지 제공
+    let userMessage = '예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    let statusCode = 500;
+
+    // 네트워크 에러
+    if (errorName === 'TypeError' && errorMessage.includes('fetch')) {
+      userMessage = '네트워크 연결에 문제가 발생했습니다. 인터넷 연결을 확인해주세요.';
+      statusCode = 503;
+    }
+    // 타임아웃 에러
+    else if (errorName === 'AbortError' || errorMessage.includes('timeout')) {
+      userMessage = '요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.';
+      statusCode = 504;
+    }
+    // Prisma 에러
+    else if (errorName.includes('Prisma') || errorMessage.includes('DATABASE_URL')) {
+      userMessage = '데이터베이스 연결에 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+      statusCode = 503;
+    }
+    // JSON 파싱 에러
+    else if (errorName === 'SyntaxError' && errorMessage.includes('JSON')) {
+      userMessage = '응답을 처리하는 중 오류가 발생했습니다. 다시 시도해주세요.';
+      statusCode = 502;
+    }
+
     return NextResponse.json(
-      { error: '예상치 못한 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },
-      { status: 500 }
+      { 
+        error: userMessage,
+        // 개발 환경에서만 상세 에러 정보 제공
+        ...(process.env.NODE_ENV === 'development' && {
+          details: errorMessage,
+          errorType: errorName
+        })
+      },
+      { status: statusCode }
     );
   }
 } 
