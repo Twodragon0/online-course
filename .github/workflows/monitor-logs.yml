@@ -80,36 +80,17 @@ jobs:
           ./scripts/monitor-logs.sh || true
 
       - name: Check GitHub Actions status
-        # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
-        # gh CLI가 자동으로 인식합니다.
-        env:
-          GH_TOKEN: ${{ github.token }}
+        # GitHub Actions API 권한 문제로 인해 웹 링크만 제공
+        continue-on-error: true
         run: |
           echo "## GitHub Actions 상태" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
-          # 최근 워크플로우 실행 확인
-          RUNS=$(gh api repos/${{ github.repository }}/actions/runs --jq '.workflow_runs[0:5]') || echo "[]"
-          
-          if [ "$RUNS" != "[]" ]; then
-            echo "| 워크플로우 | 상태 | 브랜치 | 실행 시간 |" >> $GITHUB_STEP_SUMMARY
-            echo "|-----------|------|--------|----------|" >> $GITHUB_STEP_SUMMARY
-            
-            echo "$RUNS" | jq -r '.[] | "| \(.name) | \(.conclusion // .status) | \(.head_branch) | \(.created_at) |"' >> $GITHUB_STEP_SUMMARY
-            
-            # 실패한 워크플로우 확인
-            FAILED=$(echo "$RUNS" | jq -r '.[] | select(.conclusion == "failure") | .html_url')
-            
-            if [ -n "$FAILED" ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "### ⚠️ 실패한 워크플로우" >> $GITHUB_STEP_SUMMARY
-              echo "$FAILED" | while read -r url; do
-                echo "- $url" >> $GITHUB_STEP_SUMMARY
-              done
-            fi
-          else
-            echo "워크플로우 정보를 가져올 수 없습니다." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "GitHub Actions 상태는 다음 링크에서 확인할 수 있습니다:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [Actions 페이지](https://github.com/${{ github.repository }}/actions)" >> $GITHUB_STEP_SUMMARY
+          echo "- [최신 실행](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**참고**: GitHub Actions API는 기본 토큰으로 제한된 권한을 가지고 있어 자동 조회가 불가능합니다." >> $GITHUB_STEP_SUMMARY
 
       - name: Check Vercel deployments
         env:
@@ -190,15 +171,16 @@ jobs:
 
       - name: Create issue on failure
         if: failure()
-        # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
-        # gh CLI가 자동으로 인식합니다.
-        env:
-          GH_TOKEN: ${{ github.token }}
+        # GitHub Actions API 권한 제한으로 인해 이슈 생성은 수동으로 진행
+        continue-on-error: true
         run: |
-          gh issue create \
-            --title "🚨 로그 모니터링에서 문제 발견" \
-            --body "로그 모니터링 워크플로우에서 문제가 발견되었습니다. 자세한 내용은 워크플로우 실행 로그를 확인하세요.
-          
-          워크플로우 실행: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --label "bug,monitoring" || echo "이슈 생성 실패 (이미 존재할 수 있음)"
+          echo "## ⚠️ 워크플로우 실패" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "로그 모니터링 워크플로우에서 문제가 발견되었습니다." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**워크플로우 실행**: [링크](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "자세한 내용은 워크플로우 실행 로그를 확인하세요." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**참고**: GitHub Actions API 권한 제한으로 인해 자동 이슈 생성이 불가능합니다. 필요시 수동으로 이슈를 생성해주세요." >> $GITHUB_STEP_SUMMARY
 
