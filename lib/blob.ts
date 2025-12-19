@@ -65,13 +65,19 @@ export async function uploadFile(
     // 파일 업로드
     const blob = await put(sanitizedFilename, data, uploadOptions);
 
+    // PutBlobResult에는 size와 uploadedAt이 없으므로 기본값 사용
+    // 실제 크기는 data에서 계산
+    const dataSize = data instanceof Blob ? data.size : 
+                     data instanceof Buffer ? data.length :
+                     typeof data === 'string' ? new Blob([data]).size : 0;
+
     return {
       url: blob.url,
       pathname: blob.pathname,
       contentType: blob.contentType,
       contentDisposition: blob.contentDisposition,
-      size: blob.size ?? 0,
-      uploadedAt: blob.uploadedAt ?? new Date(),
+      size: dataSize,
+      uploadedAt: new Date(),
     };
   } catch (error) {
     console.error('File upload error:', error);
@@ -91,8 +97,9 @@ export async function getFileInfo(url: string): Promise<UploadResult | null> {
       return null;
     }
 
+    // HeadBlobResult에는 모든 속성이 포함됨
     return {
-      url: blob.url,
+      url: url, // head()는 url을 반환하지 않으므로 원본 url 사용
       pathname: blob.pathname,
       contentType: blob.contentType,
       contentDisposition: blob.contentDisposition,
@@ -142,11 +149,12 @@ export async function listBlobFiles(
       limit,
     });
 
+    // ListBlobResultBlob에는 contentType과 contentDisposition이 없음
     return blobs.map((blob) => ({
       url: blob.url,
       pathname: blob.pathname,
-      contentType: blob.contentType,
-      contentDisposition: blob.contentDisposition,
+      contentType: undefined, // ListBlobResultBlob에는 없음
+      contentDisposition: undefined, // ListBlobResultBlob에는 없음
       size: blob.size,
       uploadedAt: blob.uploadedAt,
     }));
