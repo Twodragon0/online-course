@@ -6,6 +6,10 @@ import { checkRateLimit, getClientIp, getCached } from '@/lib/security';
  * 코스 목록 조회 API
  * 모든 코스를 반환합니다 (구독 상태와 관계없이).
  */
+// Next.js가 이 라우트를 동적으로 처리하도록 강제
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request: Request) {
   try {
     // Rate limiting

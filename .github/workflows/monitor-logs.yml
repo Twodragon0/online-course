@@ -46,6 +46,8 @@ jobs:
       - name: Authenticate GitHub CLI
         # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
         # gh CLI가 자동으로 인식합니다. 명시적 인증이 필요 없습니다.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh auth status || echo "GitHub CLI authentication check completed"
 
@@ -80,27 +82,33 @@ jobs:
       - name: Check GitHub Actions status
         # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
         # gh CLI가 자동으로 인식합니다.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo "## GitHub Actions 상태" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
           # 최근 워크플로우 실행 확인
-          RUNS=$(gh api repos/${{ github.repository }}/actions/runs --jq '.workflow_runs[0:5]')
+          RUNS=$(gh api repos/${{ github.repository }}/actions/runs --jq '.workflow_runs[0:5]') || echo "[]"
           
-          echo "| 워크플로우 | 상태 | 브랜치 | 실행 시간 |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|------|--------|----------|" >> $GITHUB_STEP_SUMMARY
-          
-          echo "$RUNS" | jq -r '.[] | "| \(.name) | \(.conclusion // .status) | \(.head_branch) | \(.created_at) |"' >> $GITHUB_STEP_SUMMARY
-          
-          # 실패한 워크플로우 확인
-          FAILED=$(echo "$RUNS" | jq -r '.[] | select(.conclusion == "failure") | .html_url')
-          
-          if [ -n "$FAILED" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### ⚠️ 실패한 워크플로우" >> $GITHUB_STEP_SUMMARY
-            echo "$FAILED" | while read -r url; do
-              echo "- $url" >> $GITHUB_STEP_SUMMARY
-            done
+          if [ "$RUNS" != "[]" ]; then
+            echo "| 워크플로우 | 상태 | 브랜치 | 실행 시간 |" >> $GITHUB_STEP_SUMMARY
+            echo "|-----------|------|--------|----------|" >> $GITHUB_STEP_SUMMARY
+            
+            echo "$RUNS" | jq -r '.[] | "| \(.name) | \(.conclusion // .status) | \(.head_branch) | \(.created_at) |"' >> $GITHUB_STEP_SUMMARY
+            
+            # 실패한 워크플로우 확인
+            FAILED=$(echo "$RUNS" | jq -r '.[] | select(.conclusion == "failure") | .html_url')
+            
+            if [ -n "$FAILED" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### ⚠️ 실패한 워크플로우" >> $GITHUB_STEP_SUMMARY
+              echo "$FAILED" | while read -r url; do
+                echo "- $url" >> $GITHUB_STEP_SUMMARY
+              done
+            fi
+          else
+            echo "워크플로우 정보를 가져올 수 없습니다." >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Check Vercel deployments
@@ -184,6 +192,8 @@ jobs:
         if: failure()
         # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
         # gh CLI가 자동으로 인식합니다.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh issue create \
             --title "🚨 로그 모니터링에서 문제 발견" \

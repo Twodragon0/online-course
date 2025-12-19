@@ -13,6 +13,11 @@ import { checkRateLimit, getClientIp } from '@/lib/security';
  * - folderId: 직접 폴더 ID 지정
  * - all: 모든 기수 조회 (true/false)
  */
+
+// Next.js가 이 라우트를 동적으로 처리하도록 강제
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request: Request) {
   try {
     // Rate limiting
