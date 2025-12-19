@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -110,4 +111,4 @@ model ChatLog {
   response  String   @db.Text
   category  String
   timestamp DateTime @default(now())
-} 
+}

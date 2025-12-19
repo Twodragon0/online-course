@@ -25,6 +25,8 @@ jobs:
 
       - name: Generate Prisma Client
         run: npx prisma generate
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/db?schema=public"
 
       - name: Run type check
         run: npm run type-check
@@ -67,4 +69,5 @@ jobs:
               repo: context.repo.repo,
               body: '⚠️ 자동 머지 실패: 빌드 또는 테스트가 실패했습니다. 수동으로 검토해주세요.'
             })
+
 
