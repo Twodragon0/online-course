@@ -55,6 +55,7 @@ jobs:
         run: npm run build
         env:
           SKIP_ENV_VALIDATION: true
+          NODE_OPTIONS: "--max-old-space-size=4096"
 
       - name: Analyze build size
         run: |
@@ -62,3 +63,5 @@ jobs:
           echo "| Directory | Size |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|------|" >> $GITHUB_STEP_SUMMARY
           du -sh .next/* | awk '{print "| " $2 " | " $1 " |"}' >> $GITHUB_STEP_SUMMARY || true
+
+
