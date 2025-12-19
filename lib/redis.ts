@@ -12,6 +12,9 @@ let isConnecting = false;
 
 const globalForRedis = global as unknown as { redis: RedisClient | null };
 
+// Redis 메서드 타입 정의
+type RedisMethod = 'get' | 'set' | 'del' | 'exists' | 'expire' | 'ttl' | 'incr' | 'keys';
+
 /**
  * Redis URL 검증
  */
@@ -116,11 +119,11 @@ async function getRedisClient(): Promise<RedisClient | null> {
 /**
  * Redis 클라이언트를 Proxy로 래핑하여 lazy initialization 구현
  */
-export const redis = new Proxy({} as any, {
-  get(_target, prop) {
+export const redis = new Proxy({} as RedisClientType, {
+  get(_target, prop: string | symbol) {
     // Promise를 반환하는 메서드 처리
-    if (typeof prop === 'string' && ['get', 'set', 'del', 'exists', 'expire', 'ttl', 'incr', 'keys'].includes(prop)) {
-      return async (...args: any[]) => {
+    if (typeof prop === 'string' && (['get', 'set', 'del', 'exists', 'expire', 'ttl', 'incr', 'keys'] as RedisMethod[]).includes(prop as RedisMethod)) {
+      return async (...args: unknown[]): Promise<unknown> => {
         const client = await getRedisClient();
         if (!client) {
           // Redis가 없으면 기본값 반환 (선택적 사용)
@@ -132,7 +135,8 @@ export const redis = new Proxy({} as any, {
           return;
         }
         try {
-          return await (client as any)[prop](...args);
+          const method = client[prop as keyof RedisClient] as (...args: unknown[]) => Promise<unknown>;
+          return await method.apply(client, args);
         } catch (error) {
           console.error(`Redis ${prop} error:`, error);
           // 에러 발생 시 기본값 반환
@@ -147,15 +151,16 @@ export const redis = new Proxy({} as any, {
     }
     
     // 직접 접근이 필요한 경우
-    return async (...args: any[]) => {
+    return async (...args: unknown[]): Promise<unknown> => {
       const client = await getRedisClient();
       if (!client) {
         throw new Error('Redis Client is not initialized. REDIS_URL is required.');
       }
-      return (client as any)[prop](...args);
+      const method = client[prop as keyof RedisClient] as (...args: unknown[]) => Promise<unknown>;
+      return await method.apply(client, args);
     };
   },
-});
+}) as RedisClientType;
 
 /**
  * Redis 연결 종료 (graceful shutdown)

@@ -32,7 +32,13 @@ export async function getDriveService() {
   const credentialsPath = process.env.GOOGLE_CREDENTIALS_PATH || 
     path.join(process.cwd(), 'share', 'data', 'bjchoi_service_account.json');
   
-  let credentials: any;
+  interface GoogleCredentials {
+    client_email: string;
+    private_key: string;
+    project_id?: string;
+  }
+  
+  let credentials: GoogleCredentials;
   
   // 환경변수에서 credentials 가져오기 (Vercel 등)
   if (process.env.GOOGLE_CREDENTIALS) {

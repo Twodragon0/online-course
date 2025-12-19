@@ -1,8 +1,10 @@
 // Prisma 클라이언트를 동적으로 로드하여 빌드 시점 검증 방지
-let PrismaClient: any;
-let prismaInstance: any = null;
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
 
-const globalForPrisma = global as unknown as { prisma: any };
+let PrismaClient: typeof PrismaClientType | null = null;
+let prismaInstance: PrismaClientType | null = null;
+
+const globalForPrisma = global as unknown as { prisma: PrismaClientType | null };
 
 // DATABASE_URL 검증 함수
 function validateDatabaseUrl(): boolean {
@@ -31,12 +33,23 @@ function getPrisma() {
     try {
       // 동적 import로 PrismaClient 로드
       if (!PrismaClient) {
-        PrismaClient = require('@prisma/client').PrismaClient;
+        PrismaClient = require('@prisma/client').PrismaClient as typeof PrismaClientType;
       }
 
-      prismaInstance = globalForPrisma.prisma || new PrismaClient({
+      if (!PrismaClient) {
+        throw new Error('Failed to load PrismaClient');
+      }
+
+      // Prisma 7에서는 prisma.config.ts가 마이그레이션용이고,
+      // 런타임에서는 환경 변수 DATABASE_URL을 자동으로 읽음
+      // PrismaClient는 환경 변수에서 자동으로 연결 URL을 읽으므로 별도 옵션 불필요
+      const clientOptions: {
+        log?: ('query' | 'error' | 'warn')[];
+      } = {
         log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-      });
+      };
+
+      prismaInstance = globalForPrisma.prisma || new PrismaClient(clientOptions);
 
       if (process.env.NODE_ENV !== 'production') {
         globalForPrisma.prisma = prismaInstance;
@@ -51,7 +64,7 @@ function getPrisma() {
 }
 
 // Prisma 클라이언트를 Proxy로 래핑하여 lazy initialization 구현
-export const prisma = new Proxy({} as any, {
+export const prisma = new Proxy({} as PrismaClientType, {
   get(_target, prop) {
     const client = getPrisma();
     if (!client) {
@@ -61,6 +74,6 @@ export const prisma = new Proxy({} as any, {
       }
       throw new Error('Prisma Client is not initialized. DATABASE_URL is required.');
     }
-    return client[prop];
+    return (client as PrismaClientType)[prop as keyof PrismaClientType];
   },
-}); 
+}) as PrismaClientType; 

@@ -70,8 +70,8 @@ export async function uploadFile(
       pathname: blob.pathname,
       contentType: blob.contentType,
       contentDisposition: blob.contentDisposition,
-      size: (blob as any).size ?? 0,
-      uploadedAt: (blob as any).uploadedAt ?? new Date(),
+      size: blob.size ?? 0,
+      uploadedAt: blob.uploadedAt ?? new Date(),
     };
   } catch (error) {
     console.error('File upload error:', error);
@@ -145,8 +145,8 @@ export async function listBlobFiles(
     return blobs.map((blob) => ({
       url: blob.url,
       pathname: blob.pathname,
-      contentType: (blob as any).contentType,
-      contentDisposition: (blob as any).contentDisposition,
+      contentType: blob.contentType,
+      contentDisposition: blob.contentDisposition,
       size: blob.size,
       uploadedAt: blob.uploadedAt,
     }));
