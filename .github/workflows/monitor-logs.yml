@@ -46,10 +46,12 @@ jobs:
       - name: Authenticate GitHub CLI
         # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
         # gh CLI가 자동으로 인식합니다. 명시적 인증이 필요 없습니다.
+        # 권한 제한으로 인해 일부 기능은 사용 불가
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh auth status || echo "GitHub CLI authentication check completed"
+          gh auth status || echo "GitHub CLI authentication check completed (권한 제한으로 일부 기능 사용 불가)"
 
       - name: Setup Vercel CLI
         run: |
