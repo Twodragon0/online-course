@@ -128,6 +128,13 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+        
+        // Rate limit 오류 처리
+        if (response.status === 429) {
+          const retryAfter = errorData.retryAfter || 60;
+          throw new Error(`요청이 너무 많습니다. ${retryAfter}초 후 다시 시도해주세요.`);
+        }
+        
         throw new Error(errorData.error || `서버 오류 (${response.status})`);
       }
 
@@ -293,6 +300,13 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+        
+        // Rate limit 오류 처리
+        if (response.status === 429) {
+          const retryAfter = errorData.retryAfter || 60;
+          throw new Error(`요청이 너무 많습니다. ${retryAfter}초 후 다시 시도해주세요.`);
+        }
+        
         throw new Error(errorData.error || `서버 오류 (${response.status})`);
       }
 
@@ -453,7 +467,7 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground">
-              Powered by DeepSeek v3
+              AI Assistant • Powered by DeepSeek v3
             </span>
             <Button
               variant="ghost"

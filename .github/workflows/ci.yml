@@ -36,6 +36,19 @@ jobs:
         run: npm run lint || true
         continue-on-error: true
 
+      - name: Check environment variables (info only)
+        run: |
+          echo "## Environment Variables Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Required for Production:" >> $GITHUB_STEP_SUMMARY
+          echo "- DATABASE_URL: $(if [ -z "$DATABASE_URL" ]; then echo '❌ Not set'; else echo '✅ Set'; fi)" >> $GITHUB_STEP_SUMMARY
+          echo "- NEXTAUTH_SECRET: $(if [ -z "$NEXTAUTH_SECRET" ]; then echo '❌ Not set'; else echo '✅ Set'; fi)" >> $GITHUB_STEP_SUMMARY
+          echo "- GOOGLE_CLIENT_ID: $(if [ -z "$GOOGLE_CLIENT_ID" ]; then echo '❌ Not set'; else echo '✅ Set'; fi)" >> $GITHUB_STEP_SUMMARY
+          echo "- DEEPSEEK_API_KEY: $(if [ -z "$DEEPSEEK_API_KEY" ]; then echo '❌ Not set (required for chat feature)'; else echo '✅ Set'; fi)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note**: These checks are informational only. Build will continue regardless." >> $GITHUB_STEP_SUMMARY
+        continue-on-error: true
+
       - name: Build application
         run: npm run build
         env:
@@ -48,6 +61,7 @@ jobs:
             echo "Build failed: .next directory not found"
             exit 1
           fi
+          echo "✅ Build successful"
 
   security-scan:
     name: Security Scan

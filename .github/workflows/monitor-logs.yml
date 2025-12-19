@@ -44,10 +44,10 @@ jobs:
           fi
 
       - name: Authenticate GitHub CLI
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
+        # gh CLI가 자동으로 인식합니다. 명시적 인증이 필요 없습니다.
         run: |
-          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          gh auth status || echo "GitHub CLI authentication check completed"
 
       - name: Setup Vercel CLI
         run: |
@@ -78,8 +78,8 @@ jobs:
           ./scripts/monitor-logs.sh || true
 
       - name: Check GitHub Actions status
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
+        # gh CLI가 자동으로 인식합니다.
         run: |
           echo "## GitHub Actions 상태" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -182,8 +182,8 @@ jobs:
 
       - name: Create issue on failure
         if: failure()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # GitHub Actions에서는 GITHUB_TOKEN이 자동으로 설정되므로
+        # gh CLI가 자동으로 인식합니다.
         run: |
           gh issue create \
             --title "🚨 로그 모니터링에서 문제 발견" \

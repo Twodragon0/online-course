@@ -8,6 +8,7 @@ import {
   checkRateLimit,
   getClientIp,
 } from '@/lib/security';
+import { generateChat, isGeminiConfigured } from '@/lib/gemini';
 
 interface ChatLog {
   id: string;
@@ -95,46 +96,65 @@ export async function POST(request: Request) {
 
     // 관련 이전 대화 검색
     const relevantResponses = await findRelevantResponses(message);
-    const contextMessages = relevantResponses.map((log: ChatLog) => ({
-      role: "assistant" as const,
-      content: log.response
-    }));
+    const contextMessages = relevantResponses
+      .filter((log: ChatLog) => log.response !== null)
+      .map((log: ChatLog) => ({
+        role: "assistant" as const,
+        content: log.response as string
+      }));
 
-    // DeepSeek API 호출
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey || apiKey.trim().length === 0) {
-      console.error('[Chat API] DeepSeek API key is not configured');
+    // AI 서비스 선택 (비용 최적화: DeepSeek 우선, 없으면 Gemini)
+    const useDeepSeek = process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.startsWith('sk-');
+    const useGemini = isGeminiConfigured();
+    
+    if (!useDeepSeek && !useGemini) {
+      console.error('[Chat API] No AI service configured (DeepSeek or Gemini)');
       return NextResponse.json(
-        { error: '서비스가 일시적으로 사용할 수 없습니다.' },
+        { error: '서비스가 일시적으로 사용할 수 없습니다. 관리자에게 문의해주세요.' },
         { status: 503 }
       );
     }
 
-    const systemPrompt = `당신은 DevSecOps & 클라우드 보안 온라인 코스의 AI 어시스턴트입니다.
+    const systemPrompt = `당신은 DevSecOps & 클라우드 보안 온라인 코스의 전문 AI 어시스턴트입니다.
 
 답변 작성 규칙:
-1. 전문적이고 친절한 톤으로 답변해주세요.
-2. 한국어로 답변하되, 전문 용어는 영문도 함께 표기해주세요.
-3. 중요한 키워드나 핵심 내용은 **볼드 처리**를 해주세요.
-4. 답변은 단락별로 구분하고, 각 단락 시작에 적절한 이모지를 넣어주세요.
-5. 긴 답변의 경우 다음과 같은 구조로 작성해주세요:
-   - 🎯 **핵심 요약** (2-3줄)
-   - 📚 **상세 설명** (필요한 만큼)
-   - 💡 **실무 적용 팁** (가능한 경우)
-6. 코드나 기술적인 내용은 다음과 같이 마크다운으로 포맷팅해주세요:
-   \`\`\`language
-   코드 내용
-   \`\`\`
-7. 목록은 번호나 불릿으로 구분하고, 각 항목에 이모지를 추가해주세요.
-8. 답변 마지막에는 관련된 추가 질문이나 학습 방향을 제안해주세요.
+1. **전문성과 친절함**: 전문적이면서도 이해하기 쉬운 톤으로 답변해주세요.
+2. **언어 사용**: 한국어로 답변하되, 전문 용어는 영문도 함께 표기해주세요 (예: 컨테이너 보안(Container Security)).
+3. **구조화된 답변**: 
+   - 🎯 **핵심 요약** (2-3줄로 간결하게)
+   - 📚 **상세 설명** (단계별, 구체적으로)
+   - 💡 **실무 적용 팁** (실제 사용 사례 포함)
+   - 🔗 **관련 학습 방향** (추가 질문 제안)
+4. **포맷팅**:
+   - 중요한 키워드는 **볼드 처리**
+   - 코드는 마크다운 코드 블록 사용: \`\`\`language\n코드\n\`\`\`
+   - 목록은 번호나 불릿으로 구분, 각 항목에 이모지 추가
+5. **정확성**: 
+   - 최신 보안 모범 사례(Best Practices) 반영
+   - 구체적인 도구명, 명령어, 설정 예시 제공
+   - 추측보다는 확실한 정보만 제공
+6. **실무 중심**: 
+   - 이론보다는 실무 적용 가능한 내용 우선
+   - 실제 프로젝트에서 사용할 수 있는 예시 제공
+   - 트러블슈팅 팁 포함
 
-이전 대화 맥락을 고려하여 답변하되, 각 답변은 독립적으로도 이해할 수 있도록 작성해주세요.`;
+이전 대화 맥락을 고려하되, 각 답변은 독립적으로도 완전히 이해할 수 있도록 작성해주세요.`;
 
-    // API 호출 타임아웃 설정 (30초)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    // DeepSeek 사용 시 (우선 - 비용 최적화)
+    if (useDeepSeek) {
+      try {
+        const apiKey = process.env.DEEPSEEK_API_KEY;
+        if (!apiKey || !apiKey.startsWith('sk-')) {
+          throw new Error('DeepSeek API key is invalid');
+        }
 
-    try {
+        console.log('[Chat API] Using DeepSeek API (primary)');
+
+        // API 호출 타임아웃 설정 (45초로 증가 - 더 긴 답변을 위해)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+        try {
       const requestBody = {
         model: "deepseek-chat",
         messages: [
@@ -149,8 +169,8 @@ export async function POST(request: Request) {
           }
         ],
         temperature: 0.7,
-        max_tokens: 2000,
-        stream: false
+        max_tokens: 2500, // 더 긴 답변을 위해 증가
+        stream: false // 현재는 비스트리밍 모드 사용 (향후 스트리밍 지원 예정)
       };
 
       console.log('[Chat API] Calling DeepSeek API with message length:', message.length);
@@ -187,16 +207,28 @@ export async function POST(request: Request) {
         
         // 더 구체적인 에러 메시지 제공
         if (response.status === 401) {
+          console.error('[Chat API] DeepSeek API authentication failed - check API key');
           return NextResponse.json(
             { error: 'API 인증에 실패했습니다. 관리자에게 문의해주세요.' },
             { status: 502 }
           );
         } else if (response.status === 429) {
+          // Rate limit 오류는 재시도 가능하도록 안내
+          const retryAfter = response.headers.get('Retry-After') || '60';
           return NextResponse.json(
-            { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-            { status: 429 }
+            { 
+              error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+              retryAfter: parseInt(retryAfter)
+            },
+            { 
+              status: 429,
+              headers: {
+                'Retry-After': retryAfter
+              }
+            }
           );
         } else if (response.status >= 500) {
+          // 서버 오류는 재시도 가능
           return NextResponse.json(
             { error: 'AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.' },
             { status: 502 }
@@ -209,9 +241,13 @@ export async function POST(request: Request) {
         );
       }
 
+      // 스트리밍이 아닌 경우에만 JSON 파싱
       let data;
       try {
         const responseText = await response.text();
+        if (!responseText || responseText.trim().length === 0) {
+          throw new Error('Empty response from DeepSeek API');
+        }
         data = JSON.parse(responseText);
       } catch (parseError) {
         console.error('[Chat API] Failed to parse DeepSeek API response:', parseError);
@@ -266,7 +302,8 @@ export async function POST(request: Request) {
       if (!prisma) {
         return NextResponse.json({
           response: sanitizedResponse,
-          logId: null
+          logId: null,
+          provider: 'deepseek'
         }, {
           headers: {
             'X-RateLimit-Limit': '20',
@@ -287,56 +324,137 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
           response: sanitizedResponse,
-          logId: chatLog.id
+          logId: chatLog.id,
+          provider: 'deepseek'
         }, {
           headers: {
             'X-RateLimit-Limit': '20',
             'X-RateLimit-Remaining': rateLimit.remaining.toString(),
           },
         });
-      } catch (dbError) {
-        // 데이터베이스 오류는 로깅만 하고 응답은 반환
-        console.error('Database error:', dbError instanceof Error ? dbError.message : 'Unknown error');
+        } catch (dbError) {
+          // 데이터베이스 오류는 로깅만 하고 응답은 반환
+          console.error('Database error:', dbError instanceof Error ? dbError.message : 'Unknown error');
+          return NextResponse.json({
+            response: sanitizedResponse,
+            logId: null,
+            provider: 'deepseek'
+          }, {
+            headers: {
+              'X-RateLimit-Limit': '20',
+              'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+            },
+          });
+        }
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+            console.error('[Chat API] Request timeout');
+            throw new Error('Request timeout');
+          }
+
+          // 네트워크 오류 처리
+          if (fetchError instanceof TypeError && fetchError.message.includes('fetch')) {
+            console.error('[Chat API] Network error:', fetchError.message);
+            throw new Error('Network error');
+          }
+
+          console.error('[Chat API] Fetch error:', {
+            name: fetchError instanceof Error ? fetchError.name : 'Unknown',
+            message: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+          });
+          
+          throw fetchError;
+        }
+      } catch (deepseekError) {
+        console.error('[Chat API] DeepSeek API error:', deepseekError);
+        // DeepSeek 실패 시 Gemini로 fallback
+        if (useGemini) {
+          console.log('[Chat API] Falling back to Gemini API');
+          // Gemini fallback 로직으로 계속 진행
+        } else {
+          // Gemini도 없으면 에러 반환
+          return NextResponse.json(
+            { error: 'AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' },
+            { status: 502 }
+          );
+        }
+      }
+    }
+
+    // Gemini 사용 (DeepSeek이 없거나 실패한 경우)
+    if (useGemini) {
+      try {
+        const messages = [
+          {
+            role: 'system' as const,
+            content: systemPrompt
+          },
+          ...contextMessages,
+          {
+            role: 'user' as const,
+            content: message
+          }
+        ];
+
+        console.log('[Chat API] Using Gemini API (fallback)');
+        const aiResponse = await generateChat(messages, 'gemini-pro', {
+          temperature: 0.7,
+          maxTokens: 2500,
+        });
+
+        if (!aiResponse || typeof aiResponse !== 'string' || aiResponse.trim().length === 0) {
+          throw new Error('Empty response from Gemini API');
+        }
+
+        console.log('[Chat API] Successfully received response from Gemini, length:', aiResponse.length);
+        const sanitizedResponse = sanitizeInput(aiResponse);
+
+        // 응답 저장
+        if (prisma) {
+          try {
+            const chatLog = await prisma.chatLog.create({
+              data: {
+                sessionId,
+                message,
+                response: sanitizedResponse,
+                category,
+              }
+            });
+
+            return NextResponse.json({
+              response: sanitizedResponse,
+              logId: chatLog.id,
+              provider: 'gemini'
+            }, {
+              headers: {
+                'X-RateLimit-Limit': '20',
+                'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+              },
+            });
+          } catch (dbError) {
+            console.error('Database error:', dbError instanceof Error ? dbError.message : 'Unknown error');
+          }
+        }
+
         return NextResponse.json({
           response: sanitizedResponse,
-          logId: null
+          logId: null,
+          provider: 'gemini'
         }, {
           headers: {
             'X-RateLimit-Limit': '20',
             'X-RateLimit-Remaining': rateLimit.remaining.toString(),
           },
         });
-      }
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        console.error('[Chat API] Request timeout');
+      } catch (geminiError) {
+        console.error('[Chat API] Gemini API error:', geminiError);
         return NextResponse.json(
-          { error: '요청 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.' },
-          { status: 504 }
+          { error: 'AI 응답 생성에 실패했습니다. 잠시 후 다시 시도해주세요.' },
+          { status: 502 }
         );
       }
-
-      // 네트워크 오류 처리
-      if (fetchError instanceof TypeError && fetchError.message.includes('fetch')) {
-        console.error('[Chat API] Network error:', fetchError.message);
-        return NextResponse.json(
-          { error: '네트워크 연결에 문제가 발생했습니다. 인터넷 연결을 확인해주세요.' },
-          { status: 503 }
-        );
-      }
-
-      console.error('[Chat API] Fetch error:', {
-        name: fetchError instanceof Error ? fetchError.name : 'Unknown',
-        message: fetchError instanceof Error ? fetchError.message : 'Unknown error',
-        stack: fetchError instanceof Error ? fetchError.stack : undefined
-      });
-      
-      return NextResponse.json(
-        { error: '채팅 메시지 처리에 실패했습니다. 잠시 후 다시 시도해주세요.' },
-        { status: 500 }
-      );
     }
   } catch (error) {
     console.error('[Chat API] Unexpected error:', {

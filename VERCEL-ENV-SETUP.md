@@ -31,11 +31,33 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
-### 4. AI API 키 (선택사항)
+### 4. AI API 키
 ```
-DEEPSEEK_API_KEY=your-deepseek-api-key
-OPENAI_API_KEY=your-openai-api-key
+# Google Gemini API 키 (권장 - 비용 최적화, Google OAuth와 동일 프로젝트 사용 가능)
+# https://makersuite.google.com/app/apikey 또는 Google Cloud Console에서 발급
+GOOGLE_GEMINI_API_KEY=your-gemini-api-key
+# 또는
+GEMINI_API_KEY=your-gemini-api-key
+
+# DeepSeek API 키 (선택사항, Gemini 대체용)
+DEEPSEEK_API_KEY=sk-your-deepseek-api-key
+
+# OpenAI API 키 (선택사항, Pro 플랜용)
+OPENAI_API_KEY=sk-your-openai-api-key
 ```
+
+**Gemini API 키 발급 방법**:
+1. Google Cloud Console 접속: https://console.cloud.google.com
+2. API 및 서비스 → 사용자 인증 정보
+3. API 키 만들기 클릭
+4. 생성된 키 복사하여 환경 변수에 설정
+5. (선택) API 키 제한 설정으로 보안 강화
+
+**DEEPSEEK_API_KEY 설정 방법**:
+1. https://platform.deepseek.com 에서 API 키 발급
+2. API 키는 `sk-`로 시작하는 형식입니다
+3. Vercel 대시보드 → Settings → Environment Variables에서 설정
+4. Production, Preview, Development 환경 모두에 설정 권장
 
 ### 5. Stripe (결제 기능 사용 시)
 ```
@@ -75,6 +97,14 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
   1. DATABASE_URL 확인
   2. 데이터베이스가 실행 중인지 확인
   3. 방화벽 설정 확인 (외부 DB 사용 시)
+
+### DeepSeek API 키 오류
+- 오류: `서비스가 일시적으로 사용할 수 없습니다. 관리자에게 문의해주세요.`
+- 해결:
+  1. `DEEPSEEK_API_KEY`가 Vercel 환경 변수에 설정되어 있는지 확인
+  2. API 키가 `sk-`로 시작하는 올바른 형식인지 확인
+  3. API 키가 만료되지 않았는지 확인 (https://platform.deepseek.com에서 확인)
+  4. 환경 변수 설정 후 **Redeploy** 필요
 
 ## 환경 변수 확인 명령어
 

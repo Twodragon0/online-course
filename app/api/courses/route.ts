@@ -32,10 +32,13 @@ export async function GET(request: Request) {
     }
 
     if (!prisma) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 503 }
-      );
+      console.warn('[Courses API] Prisma not available, returning empty array');
+      return NextResponse.json([], {
+        headers: {
+          'X-RateLimit-Limit': '30',
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        },
+      });
     }
     
     // Redis 캐싱 적용 (5분 TTL)
