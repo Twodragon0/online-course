@@ -10,3 +10,4 @@ coverage
 .env*.local
 tsconfig.tsbuildinfo
 .tmp_backup
+logs/

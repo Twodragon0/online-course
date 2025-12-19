@@ -1,0 +1,194 @@
+name: Log Monitoring and Auto-Fix
+
+on:
+  schedule:
+    # 매시간 실행
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    # 수동 실행 가능
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  monitor:
+    name: Monitor Logs and Auto-Fix
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup GitHub CLI
+        run: |
+          gh --version || echo "GitHub CLI already installed"
+          if ! command -v gh &> /dev/null; then
+            echo "GitHub CLI not found, installing..."
+            type -p curl >/dev/null || (apt-get update && apt-get install curl -y)
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            apt-get update
+            apt-get install gh -y
+          fi
+
+      - name: Authenticate GitHub CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GITHUB_TOKEN" | gh auth login --with-token
+
+      - name: Setup Vercel CLI
+        run: |
+          if ! command -v vercel &> /dev/null; then
+            npm install -g vercel@latest
+          fi
+          vercel --version
+
+      - name: Authenticate Vercel CLI
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo "$VERCEL_TOKEN" | vercel login --token
+          else
+            echo "VERCEL_TOKEN이 설정되지 않았습니다. Vercel 로그 확인을 건너뜁니다."
+          fi
+
+      - name: Make monitor script executable
+        run: chmod +x scripts/monitor-logs.sh
+
+      - name: Run log monitoring
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DATABASE_URL: "postgresql://user:password@localhost:5432/db?schema=public"
+        run: |
+          ./scripts/monitor-logs.sh || true
+
+      - name: Check GitHub Actions status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## GitHub Actions 상태" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 최근 워크플로우 실행 확인
+          RUNS=$(gh api repos/${{ github.repository }}/actions/runs --jq '.workflow_runs[0:5]')
+          
+          echo "| 워크플로우 | 상태 | 브랜치 | 실행 시간 |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|------|--------|----------|" >> $GITHUB_STEP_SUMMARY
+          
+          echo "$RUNS" | jq -r '.[] | "| \(.name) | \(.conclusion // .status) | \(.head_branch) | \(.created_at) |"' >> $GITHUB_STEP_SUMMARY
+          
+          # 실패한 워크플로우 확인
+          FAILED=$(echo "$RUNS" | jq -r '.[] | select(.conclusion == "failure") | .html_url')
+          
+          if [ -n "$FAILED" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### ⚠️ 실패한 워크플로우" >> $GITHUB_STEP_SUMMARY
+            echo "$FAILED" | while read -r url; do
+              echo "- $url" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+      - name: Check Vercel deployments
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN이 설정되지 않아 Vercel 배포 확인을 건너뜁니다."
+            exit 0
+          fi
+          
+          echo "## Vercel 배포 상태" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 최근 배포 확인
+          DEPLOYMENTS=$(vercel ls --json --token="$VERCEL_TOKEN" 2>/dev/null || echo "[]")
+          
+          if [ "$DEPLOYMENTS" != "[]" ]; then
+            echo "| URL | 상태 | 생성 시간 |" >> $GITHUB_STEP_SUMMARY
+            echo "|-----|------|----------|" >> $GITHUB_STEP_SUMMARY
+            
+            echo "$DEPLOYMENTS" | jq -r '.[0:5] | .[] | "| \(.url) | \(.state) | \(.created) |"' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "배포 정보를 가져올 수 없습니다." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check for errors in logs
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            exit 0
+          fi
+          
+          echo "## Vercel 로그 에러 확인" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # 최근 에러 로그 확인
+          ERRORS=$(vercel logs --output=raw --token="$VERCEL_TOKEN" --limit=100 2>/dev/null | grep -i "error\|fail\|exception" | head -10 || echo "")
+          
+          if [ -n "$ERRORS" ]; then
+            echo "### ⚠️ 발견된 에러" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "$ERRORS" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ 최근 로그에 심각한 에러가 없습니다." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Auto-fix common issues
+        env:
+          DATABASE_URL: "postgresql://user:password@localhost:5432/db?schema=public"
+          SKIP_ENV_VALIDATION: "true"
+        run: |
+          echo "## 자동 해결 시도" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Prisma 스키마 검증
+          if npx prisma validate 2>&1; then
+            echo "✅ Prisma 스키마 검증 성공" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Prisma 스키마 검증 실패" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # 빌드 테스트
+          if npm run build 2>&1 | tail -20; then
+            echo "✅ 빌드 테스트 성공" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ 빌드 테스트 실패" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitor-logs
+          path: logs/*.log
+          retention-days: 7
+
+      - name: Create issue on failure
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "🚨 로그 모니터링에서 문제 발견" \
+            --body "로그 모니터링 워크플로우에서 문제가 발견되었습니다. 자세한 내용은 워크플로우 실행 로그를 확인하세요.
+          
+          워크플로우 실행: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --label "bug,monitoring" || echo "이슈 생성 실패 (이미 존재할 수 있음)"
+

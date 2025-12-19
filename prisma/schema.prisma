@@ -111,4 +111,4 @@ model ChatLog {
   response  String   @db.Text
   category  String
   timestamp DateTime @default(now())
-}
+} 

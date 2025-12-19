@@ -10,7 +10,10 @@
     "postinstall": "prisma generate",
     "check-build": "npm run build",
     "type-check": "tsc --noEmit",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "monitor": "./scripts/monitor-logs.sh",
+    "check:github": "./scripts/check-github-actions.sh",
+    "check:vercel": "./scripts/check-vercel-logs.sh"
   },
   "engines": {
     "node": ">=18.17.0 <23.0.0"
