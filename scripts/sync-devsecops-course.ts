@@ -117,7 +117,7 @@ async function upsertVideo(
         description,
         url,
         position,
-        driveFileId: driveFileId || null,
+        // driveFileId 필드는 스키마에 없으므로 제거
       },
     });
     console.log(`✅ 비디오 업데이트: ${title}`);
@@ -129,7 +129,7 @@ async function upsertVideo(
         description,
         url,
         position,
-        driveFileId: driveFileId || null,
+        // driveFileId 필드는 스키마에 없으므로 제거
       },
     });
     console.log(`✅ 비디오 생성: ${title}`);
