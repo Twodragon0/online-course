@@ -109,7 +109,7 @@ export const authOptions: NextAuthOptions = {
       }
       
       // account에서 email 가져오기 (Google OAuth)
-      if (account && 'email' in account && account.email) {
+      if (account && 'email' in account && account.email && typeof account.email === 'string') {
         token.email = account.email;
       }
       
