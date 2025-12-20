@@ -149,3 +149,5 @@ Dependabot이 새로운 설정을 적용하도록:
 - [GitHub Projects 가이드](https://docs.github.com/en/issues/planning-and-tracking-with-projects)
 - [이슈 및 PR 템플릿](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests)
 
+
+

@@ -1,6 +1,6 @@
 'use client';
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Video, MessageSquare, Zap, ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -9,8 +9,39 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 
 const DashboardPage: React.FC = () => {
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const isPro = session?.user?.subscriptionStatus === 'active';
+
+  // 세션 갱신 (구독 상태 변경 확인)
+  useEffect(() => {
+    const checkAndUpdateSession = async () => {
+      if (session?.user?.email) {
+        try {
+          // 구독 상태 확인
+          const response = await fetch('/api/subscription');
+          if (response.ok) {
+            const data = await response.json();
+            const dbSubscriptionStatus = data.subscriptionStatus;
+            
+            // 데이터베이스의 구독 상태와 세션의 구독 상태가 다르면 세션 갱신
+            if (dbSubscriptionStatus !== session.user.subscriptionStatus) {
+              await update();
+            }
+          }
+        } catch (error) {
+          console.error('Failed to check subscription status:', error);
+        }
+      }
+    };
+
+    // 컴포넌트 마운트 시 한 번 확인
+    checkAndUpdateSession();
+    
+    // 5초마다 확인 (선택사항)
+    const interval = setInterval(checkAndUpdateSession, 5000);
+    
+    return () => clearInterval(interval);
+  }, [session, update]);
 
   const courses = [
     {

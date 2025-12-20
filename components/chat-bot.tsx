@@ -99,12 +99,13 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
   };
 
   const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    const messageToSend = input.trim();
+    if (!messageToSend || isLoading) return;
 
-    const category = categorizeMessage(input);
+    const category = categorizeMessage(messageToSend);
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      content: input,
+      content: messageToSend,
       role: 'user',
       category,
       timestamp: new Date(),
@@ -116,23 +117,45 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
     setThinkingMessage(thinkingStates[0]);
 
     try {
+      // 세션 ID 저장
+      const sessionId = localStorage.getItem('chatSessionId') || Date.now().toString();
+      if (!localStorage.getItem('chatSessionId')) {
+        localStorage.setItem('chatSessionId', sessionId);
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60초 타임아웃
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: input,
+          message: messageToSend,
           category,
-          sessionId: localStorage.getItem('chatSessionId') || Date.now().toString(),
+          sessionId,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: '알 수 없는 오류가 발생했습니다.' };
+        }
         
         // Rate limit 오류 처리
         if (response.status === 429) {
           const retryAfter = errorData.retryAfter || 60;
           throw new Error(`요청이 너무 많습니다. ${retryAfter}초 후 다시 시도해주세요.`);
+        }
+        
+        // 서비스 사용 불가 오류
+        if (response.status === 503) {
+          throw new Error(errorData.error || '서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.');
         }
         
         throw new Error(errorData.error || `서버 오류 (${response.status})`);
@@ -159,13 +182,22 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.";
+      
+      let errorMessage = "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.";
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = '요청 시간이 초과되었습니다. 네트워크 연결을 확인하고 다시 시도해주세요.';
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          errorMessage = '네트워크 연결에 문제가 발생했습니다. 인터넷 연결을 확인해주세요.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
       
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
-        content: errorMessage,
+        content: `❌ ${errorMessage}`,
         role: 'assistant',
         category: 'error',
         timestamp: new Date(),
@@ -288,23 +320,45 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
     setThinkingMessage(thinkingStates[0]);
 
     try {
+      // 세션 ID 저장
+      const sessionId = localStorage.getItem('chatSessionId') || Date.now().toString();
+      if (!localStorage.getItem('chatSessionId')) {
+        localStorage.setItem('chatSessionId', sessionId);
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60초 타임아웃
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: question,
           category,
-          sessionId: localStorage.getItem('chatSessionId') || Date.now().toString(),
+          sessionId,
         }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: '알 수 없는 오류가 발생했습니다.' };
+        }
         
         // Rate limit 오류 처리
         if (response.status === 429) {
           const retryAfter = errorData.retryAfter || 60;
           throw new Error(`요청이 너무 많습니다. ${retryAfter}초 후 다시 시도해주세요.`);
+        }
+        
+        // 서비스 사용 불가 오류
+        if (response.status === 503) {
+          throw new Error(errorData.error || '서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.');
         }
         
         throw new Error(errorData.error || `서버 오류 (${response.status})`);
@@ -331,13 +385,22 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.";
+      
+      let errorMessage = "죄송합니다. 답변을 생성하는 중에 문제가 발생했습니다. 다시 시도해 주세요.";
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = '요청 시간이 초과되었습니다. 네트워크 연결을 확인하고 다시 시도해주세요.';
+        } else if (error.message.includes('fetch') || error.message.includes('network')) {
+          errorMessage = '네트워크 연결에 문제가 발생했습니다. 인터넷 연결을 확인해주세요.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
       
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
-        content: errorMessage,
+        content: `❌ ${errorMessage}`,
         role: 'assistant',
         category: 'error',
         timestamp: new Date(),
@@ -387,27 +450,44 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
   // 추천 질문 생성 함수 수정
   const generateRecommendedQuestions = useCallback(async (content: string) => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
+
       const response = await fetch('/api/related-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ response: content }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) throw new Error('Failed to fetch questions');
       const data = await response.json();
-      setRecommendedQuestions(data.questions);
+      
+      if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+        setRecommendedQuestions(data.questions);
+      } else {
+        throw new Error('Invalid questions format');
+      }
     } catch (error) {
       console.error('Error generating questions:', error);
       // 기본 추천 질문 설정
-      if (content.toLowerCase().includes('devsecops')) {
+      if (content.toLowerCase().includes('devsecops') || content.toLowerCase().includes('보안')) {
         setRecommendedQuestions([
-          "🔄 CI/CD 파이프라인에 어떤 보안 도구들을 통합할 수 있나요?",
-          "🛡️ 컨테이너 보안을 위한 구체적인 방법이 궁금합니다."
+          "🔄 파이프라인에 어떤 보안 테스트들을 추가하면 좋을까요?",
+          "🔍 취약점 스캔 결과는 어떻게 관리하고 대응하나요?",
+          "💼 수강 후 이 코스 이수증이 취업이나 자격 인증에 어떻게 활용될 수 있는지 구체적인 사례를 알려주실 수 있나요?"
         ]);
       } else if (content.toLowerCase().includes('ai')) {
         setRecommendedQuestions([
           "🎯 AI 기반 콘텐츠 제작의 실제 워크플로우가 궁금합니다.",
           "📊 성과 분석을 위한 AI 도구 활용 방법을 알려주세요."
+        ]);
+      } else {
+        setRecommendedQuestions([
+          "🔐 클라우드 보안 과정의 선수 지식이 궁금합니다",
+          "💼 과정 수료 후 진로 방향이 궁금합니다"
         ]);
       }
     }

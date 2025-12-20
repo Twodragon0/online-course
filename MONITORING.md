@@ -273,3 +273,5 @@ npm install @sentry/nextjs
 - [ ] 사용자 분석 리뷰
 - [ ] 로그 보관 정책 확인
 
+
+

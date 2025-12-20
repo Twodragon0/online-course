@@ -159,3 +159,5 @@ await prisma.video.create({
 - API 엔드포인트: `/api/courses/sync-devsecops`
 - 스크립트 경로: `scripts/sync-devsecops-course.ts`
 
+
+

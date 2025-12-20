@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
 import { prisma } from '@/lib/prisma';
 import {
   isValidMessage,
@@ -43,17 +44,35 @@ async function findRelevantResponses(message: string): Promise<ChatLog[]> {
 
 export async function POST(request: Request) {
   try {
-    // Rate limiting
+    // 세션 확인 및 구독 상태 가져오기
+    const session = await getServerSession();
+    const isPro = session?.user?.subscriptionStatus === 'active';
+    
+    // Rate limiting - Pro는 더 높은 제한, Basic은 낮은 제한
     const clientIp = getClientIp(request);
-    const rateLimit = await checkRateLimit(`chat:${clientIp}`, 20, 60000); // 1분에 20회
+    const rateLimitConfig = isPro 
+      ? { maxRequests: 100, windowMs: 60000 } // Pro: 1분에 100회
+      : { maxRequests: 10, windowMs: 60000 }; // Basic: 1분에 10회
+    
+    const rateLimit = await checkRateLimit(
+      `chat:${session?.user?.email || clientIp}`, 
+      rateLimitConfig.maxRequests, 
+      rateLimitConfig.windowMs
+    );
+    
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+        { 
+          error: isPro 
+            ? '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' 
+            : 'Basic 플랜에서는 요청 횟수가 제한됩니다. Pro 플랜으로 업그레이드하면 더 많은 요청을 사용할 수 있습니다.',
+          upgradeRequired: !isPro
+        },
         {
           status: 429,
           headers: {
             'Retry-After': '60',
-            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Limit': rateLimitConfig.maxRequests.toString(),
             'X-RateLimit-Remaining': '0',
             'X-RateLimit-Reset': rateLimit.resetTime.toString(),
           },
@@ -352,8 +371,9 @@ export async function POST(request: Request) {
         provider: 'deepseek'
       }, {
         headers: {
-          'X-RateLimit-Limit': '20',
+          'X-RateLimit-Limit': rateLimitConfig.maxRequests.toString(),
           'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-Subscription-Status': isPro ? 'pro' : 'basic',
         },
       });
         } catch (fetchError) {
@@ -452,8 +472,9 @@ export async function POST(request: Request) {
           provider: 'gemini'
         }, {
           headers: {
-            'X-RateLimit-Limit': '20',
+            'X-RateLimit-Limit': rateLimitConfig.maxRequests.toString(),
             'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+            'X-Subscription-Status': isPro ? 'pro' : 'basic',
           },
         });
       } catch (geminiError) {

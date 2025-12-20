@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
+import { extractFileIdFromUrl } from "@/lib/google-drive-client";
 
 interface VideoCardProps {
   id: string;
@@ -13,8 +14,11 @@ interface VideoCardProps {
 export function VideoCard({ id, title, description, driveFileId }: VideoCardProps) {
   const { data: session } = useSession();
 
+  // Google Drive 파일 ID 추출 (URL 형식이거나 파일 ID일 수 있음)
+  const fileId = extractFileIdFromUrl(driveFileId) || driveFileId;
+  
   // Google Drive 파일 ID로부터 임베드 URL 생성
-  const embedUrl = `https://drive.google.com/file/d/${driveFileId}/preview`;
+  const embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
 
   if (!session) {
     return (

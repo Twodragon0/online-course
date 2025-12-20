@@ -552,3 +552,5 @@ Rate limit 초과 시 `429 Too Many Requests` 상태 코드와 함께 다음 응
 - [Stripe API 문서](https://stripe.com/docs/api)
 - [PayPal API 문서](https://developer.paypal.com/docs/api)
 
+
+

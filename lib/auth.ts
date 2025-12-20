@@ -70,13 +70,84 @@ export const authOptions: NextAuthOptions = {
         } else if (token?.sub) {
           session.user.id = token.sub;
         }
+
+        // 구독 상태 가져오기 (우선순위: token > database)
+        if (token?.subscriptionStatus) {
+          // JWT token에서 구독 상태 가져오기 (JWT 전략 사용 시)
+          session.user.subscriptionStatus = token.subscriptionStatus as string;
+        } else if (isDatabaseUrlValid() && prisma && session.user.email) {
+          // 데이터베이스에서 구독 상태 가져오기 (database 전략 사용 시)
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { email: session.user.email },
+              select: { subscriptionStatus: true },
+            });
+            if (dbUser) {
+              session.user.subscriptionStatus = dbUser.subscriptionStatus;
+            } else {
+              // 사용자를 찾을 수 없으면 기본값 설정
+              session.user.subscriptionStatus = 'inactive';
+            }
+          } catch (error) {
+            console.warn('[Auth] Failed to fetch subscription status:', error);
+            session.user.subscriptionStatus = 'inactive';
+          }
+        } else {
+          // 기본값 설정
+          session.user.subscriptionStatus = 'inactive';
+        }
       }
       return session;
     },
-    jwt: async ({ token, user }) => {
+    jwt: async ({ token, user, trigger, account }) => {
       if (user) {
         token.id = user.id;
+        // user 객체에서 email 가져오기 (PrismaAdapter 사용 시)
+        if ('email' in user && user.email) {
+          token.email = user.email;
+        }
       }
+      
+      // account에서 email 가져오기 (Google OAuth)
+      if (account && 'email' in account && account.email) {
+        token.email = account.email;
+      }
+      
+      // 구독 상태를 JWT token에 포함 (JWT 전략 사용 시)
+      if (token.email && isDatabaseUrlValid() && prisma) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email as string },
+            select: { subscriptionStatus: true },
+          });
+          if (dbUser) {
+            token.subscriptionStatus = dbUser.subscriptionStatus;
+          } else {
+            token.subscriptionStatus = 'inactive';
+          }
+        } catch (error) {
+          console.warn('[Auth] Failed to fetch subscription status in JWT:', error);
+          token.subscriptionStatus = 'inactive';
+        }
+      }
+      
+      // 세션 업데이트 시 구독 상태 갱신
+      if (trigger === 'update' && token.email && isDatabaseUrlValid() && prisma) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email as string },
+            select: { subscriptionStatus: true },
+          });
+          if (dbUser) {
+            token.subscriptionStatus = dbUser.subscriptionStatus;
+          } else {
+            token.subscriptionStatus = 'inactive';
+          }
+        } catch (error) {
+          console.warn('[Auth] Failed to update subscription status in JWT:', error);
+        }
+      }
+      
       return token;
     },
   },

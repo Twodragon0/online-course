@@ -210,3 +210,5 @@ export function isGeminiConfigured(): boolean {
   return !!(apiKey && apiKey.trim().length > 0);
 }
 
+
+

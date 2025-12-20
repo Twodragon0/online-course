@@ -10,4 +10,10 @@ declare module "next-auth" {
       subscriptionStatus?: string;
     };
   }
+
+  interface JWT {
+    id?: string;
+    email?: string;
+    subscriptionStatus?: string;
+  }
 } 
