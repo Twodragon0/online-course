@@ -103,15 +103,14 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         // user 객체에서 email 가져오기 (PrismaAdapter 사용 시)
-        if ('email' in user && user.email) {
+        if ('email' in user && user.email && typeof user.email === 'string') {
           token.email = user.email;
         }
       }
       
       // account에서 email 가져오기 (Google OAuth)
-      if (account && 'email' in account && account.email && typeof account.email === 'string') {
-        token.email = account.email;
-      }
+      // account는 일반적으로 email을 포함하지 않으므로 제거
+      // email은 user 객체나 token에서 가져옴
       
       // 구독 상태를 JWT token에 포함 (JWT 전략 사용 시)
       if (token.email && isDatabaseUrlValid() && prisma) {
