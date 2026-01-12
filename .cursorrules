@@ -1,23 +1,397 @@
-### ShadCN Components
+# Cursor Rules for Online Course Platform
 
-- All UI components must use ShadCN
-- Component usage path should be: `/components/ui`
-- Component installation command: `npx shadcn@latest add [component-name]`
-  - Note: `npx shadcn-ui@latest add` is deprecated. Use `npx shadcn@latest add` instead
+## 프로젝트 개요
+이 프로젝트는 Next.js 14 기반의 온라인 교육 플랫폼입니다. DevSecOps, 클라우드 보안, AI/SNS 관련 동영상 강의와 자격증 교육을 제공합니다.
+
+**도메인**: https://edu.2twodragon.com
+
+## 핵심 원칙
+
+### 1. 보안 우선 (Security First)
+- 모든 코드, 설정, 아키텍처 제안은 보안을 최우선으로 고려
+- 최소 권한 원칙(Principle of Least Privilege) 적용
+- Defense in Depth 전략 고려
+- 민감한 정보(API 키, 비밀번호, 토큰 등)는 절대 하드코딩하지 않음
+- OWASP Top 10 (2025) 취약점 방지
+- ISMS-P 기준 준수
+
+### 2. 실무 중심 (Practical Focus)
+- 이론보다 실무 경험과 실제 사용 사례 중심
+- 구체적인 코드 예제와 설정 파일 제공
+- 문제 해결 과정과 트러블슈팅 포함
+- 실제 운영 환경에서의 고려사항 언급
+
+### 3. 타입 안전성 (Type Safety)
+- TypeScript strict mode 필수
+- any 타입 사용 최소화
+- 인터페이스와 타입 정의 명확히
+
+---
+
+## 기술 스택
+
+### 프레임워크 및 라이브러리
+- **Framework**: Next.js 14 (App Router)
+- **Language**: TypeScript (strict mode)
+- **UI Components**: ShadCN UI (`/components/ui`)
+- **Icons**: Lucide React
+- **Styling**: Tailwind CSS
+- **Database**: PostgreSQL + Prisma ORM
+- **Authentication**: NextAuth v4
+- **AI Services**: DeepSeek (primary), Gemini (fallback), OpenAI (Pro)
+- **Payments**: Stripe, PayPal
+- **Caching**: Redis (Upstash compatible)
+
+### ShadCN Components
+- 모든 UI 컴포넌트는 ShadCN 사용
+- 컴포넌트 경로: `/components/ui`
+- 설치 명령: `npx shadcn@latest add [component-name]`
+  - 참고: `npx shadcn-ui@latest add`는 deprecated
 
 ### Icons
+- 모든 아이콘은 Lucide React 사용
+- 임포트 형식: `import { IconName } from "lucide-react"`
+- 예시: `import { Search, Menu, Play } from "lucide-react"`
 
-- All icons must use Lucide React
-- Icon import format: `import { IconName } from "lucide-react"`
-- Example: `import { Search, Menu } from "lucide-react"`
+---
 
-### Component Structure
+## 프로젝트 구조
 
-- Components should be placed under `/components`
-- UI components should be placed under `/components/ui`
-- Page components should be placed under `/app`
+```
+online-course/
+├── app/                    # Next.js 14 App Router
+│   ├── api/               # API 엔드포인트
+│   │   ├── auth/          # NextAuth 인증
+│   │   ├── chat/          # AI 챗봇 API
+│   │   ├── courses/       # 코스 관리
+│   │   ├── webhooks/      # Stripe/PayPal 웹훅
+│   │   └── ...
+│   ├── (pages)/           # UI 페이지
+│   ├── layout.tsx         # 루트 레이아웃
+│   └── page.tsx           # 랜딩 페이지
+├── components/            # React 컴포넌트
+│   ├── ui/               # ShadCN UI 컴포넌트
+│   ├── chat-bot.tsx      # AI 챗봇
+│   ├── video-summary.tsx # 비디오 요약
+│   └── ...
+├── lib/                   # 핵심 유틸리티
+│   ├── auth.ts           # NextAuth 설정
+│   ├── security.ts       # 보안 유틸리티
+│   ├── prisma.ts         # Prisma 클라이언트
+│   └── ...
+├── prisma/               # 데이터베이스
+│   ├── schema.prisma    # DB 스키마
+│   └── migrations/      # 마이그레이션
+├── types/                # TypeScript 타입
+└── middleware.ts         # 보안 미들웨어
+```
 
-### Best Practices
+---
 
-- TypeScript strict mode must be enabled
-- Components must be reusable 
+## 보안 규칙
+
+### OWASP Top 10 (2025) 대응
+
+#### A01: Broken Access Control
+- 모든 API 엔드포인트에 인증/인가 검증 필수
+- NextAuth 세션 검증 사용
+- 역할 기반 접근 제어(RBAC) 적용
+
+```typescript
+// 올바른 예시
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // ...
+}
+```
+
+#### A02: Cryptographic Failures
+- 비밀번호는 bcrypt (salt rounds 12 이상) 사용
+- HTTPS 필수 (프로덕션 환경)
+- 민감 데이터 암호화 저장
+
+#### A03: Injection
+- Prisma ORM의 parameterized queries 사용
+- 사용자 입력 항상 sanitize
+- `lib/security.ts`의 `sanitizeInput()` 사용
+
+```typescript
+import { sanitizeInput } from '@/lib/security';
+
+const safeInput = sanitizeInput(userInput);
+```
+
+#### A04: Insecure Design
+- 보안을 고려한 설계
+- Rate limiting 적용
+- 입력 검증 필수
+
+#### A05: Security Misconfiguration
+- 기본 자격 증명 사용 금지
+- 디버그 모드는 개발 환경에서만
+- 보안 헤더 설정 (CSP, HSTS 등)
+
+#### A06: Vulnerable Components
+- 정기적인 의존성 업데이트
+- `npm audit` 정기 실행
+- Dependabot 활성화
+
+#### A07: Identification and Authentication Failures
+- 강력한 비밀번호 정책 (8자 이상, 대소문자, 숫자)
+- 세션 관리 보안 (httpOnly, secure, sameSite)
+- OAuth 2.0 사용 (Google)
+
+#### A08: Software and Data Integrity Failures
+- Stripe webhook signature 검증
+- 의존성 무결성 확인
+
+#### A09: Security Logging and Monitoring Failures
+- 보안 이벤트 로깅
+- 민감 정보는 로그에서 제외
+
+#### A10: Server-Side Request Forgery (SSRF)
+- URL 화이트리스트 적용
+- 내부 네트워크 접근 차단
+
+### 민감 정보 처리
+
+#### 절대 금지 사항
+- ❌ API 키, 비밀번호, 토큰 하드코딩
+- ❌ .env 파일 Git 커밋
+- ❌ 클라이언트에 시크릿 노출
+- ❌ 로그에 민감 정보 출력
+- ❌ `eval()`, `new Function()` 사용
+
+#### 필수 사항
+- ✅ 환경 변수로 시크릿 관리
+- ✅ .gitignore에 .env* 포함
+- ✅ 서버 사이드에서만 API 키 사용
+- ✅ 입력값 검증 및 sanitization
+
+### XSS 방지
+
+#### dangerouslySetInnerHTML 사용 시
+- 반드시 escapeHtml 적용 후 사용
+- AI 응답 등 외부 데이터는 항상 escape
+
+```typescript
+// 올바른 예시
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+<div dangerouslySetInnerHTML={{
+  __html: escapeHtml(content)
+    .replace(/\n/g, '<br/>')
+}} />
+```
+
+### Rate Limiting
+- Redis 기반 rate limiting 사용
+- API 엔드포인트별 제한 적용
+- `lib/security.ts`의 `checkRateLimit()` 사용
+
+```typescript
+import { checkRateLimit, getClientIp } from '@/lib/security';
+
+const clientIp = getClientIp(request);
+const rateLimit = await checkRateLimit(`api:${clientIp}`, 10, 60000);
+if (!rateLimit.allowed) {
+  return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+}
+```
+
+---
+
+## 코드 작성 규칙
+
+### TypeScript
+- strict mode 활성화
+- any 타입 사용 최소화
+- 인터페이스/타입 명확히 정의
+- 널 체크 필수
+
+```typescript
+// 좋은 예시
+interface User {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
+// 나쁜 예시
+const user: any = await getUser();
+```
+
+### React/Next.js
+- 서버 컴포넌트 기본 사용
+- 클라이언트 컴포넌트는 'use client' 명시
+- 에러 바운더리 적용
+- Suspense로 로딩 상태 처리
+
+### API 라우트
+- 입력 검증 필수
+- 적절한 HTTP 상태 코드 반환
+- 에러 메시지에 민감 정보 포함 금지
+
+```typescript
+export async function POST(request: Request) {
+  try {
+    // 1. Rate limiting
+    // 2. 인증 확인
+    // 3. 입력 검증
+    // 4. 비즈니스 로직
+    // 5. 응답 반환
+  } catch (error) {
+    console.error('Error:', error instanceof Error ? error.message : 'Unknown');
+    return NextResponse.json(
+      { error: '처리 중 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### Prisma
+- parameterized queries 사용 (기본)
+- 트랜잭션 적절히 사용
+- 에러 처리 필수
+
+---
+
+## 환경 변수 관리
+
+### 필수 환경 변수
+```bash
+# Database
+DATABASE_URL="postgresql://..."
+
+# NextAuth
+NEXTAUTH_SECRET="min-32-characters"
+NEXTAUTH_URL="https://edu.2twodragon.com"
+
+# Google OAuth
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+
+# AI Services
+DEEPSEEK_API_KEY="sk-..."      # Primary
+GEMINI_API_KEY="..."           # Fallback
+OPENAI_API_KEY="sk-..."        # Pro plan
+
+# Payments
+STRIPE_SECRET_KEY="sk_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
+
+# Redis
+REDIS_URL="redis://..."
+```
+
+### 검증 규칙
+- NEXTAUTH_SECRET: 32자 이상
+- DEEPSEEK_API_KEY: `sk-`로 시작
+- STRIPE_SECRET_KEY: `sk_live_` 또는 `sk_test_`로 시작
+
+---
+
+## AI 챗봇 규칙
+
+### 보안
+- API 키는 서버 사이드에서만 사용
+- Rate limiting: 세션당 10회/분 (Basic), 100회/분 (Pro)
+- 입력 길이 제한: 5000자
+- XSS 방지 적용
+
+### 응답 처리
+- 타임아웃: 25초
+- 최대 토큰: 1500
+- 에러 시 fallback (DeepSeek → Gemini)
+
+### 비용 최적화
+- DeepSeek 우선 사용 (비용 효율)
+- 캐싱 적용 (Redis)
+
+---
+
+## 테스트 및 품질
+
+### 코드 리뷰 체크리스트
+- [ ] TypeScript 타입 오류 없음
+- [ ] 보안 취약점 없음 (XSS, CSRF, SQL Injection 등)
+- [ ] 민감 정보 하드코딩 없음
+- [ ] 에러 처리 적절함
+- [ ] Rate limiting 적용됨
+- [ ] 입력 검증 적용됨
+
+### 빌드 전 확인
+```bash
+npm run lint
+npm run build
+npm audit
+```
+
+---
+
+## 배포
+
+### Vercel 설정
+- 환경 변수는 Vercel 대시보드에서 설정
+- Production, Preview, Development 환경 분리
+- 배포 후 반드시 Redeploy로 환경 변수 적용
+
+### 프리티어 최적화
+- 함수 타임아웃: 10초 이내
+- 메모리: 1024MB
+- 빠른 실패: 입력 검증 먼저 수행
+
+---
+
+## 로깅 및 모니터링
+
+### 로깅 규칙
+- 프로덕션: warn, error 레벨만
+- 민감 정보 필터링 필수
+- 로그 길이 제한: 1000자
+
+### 모니터링 대상
+| 항목 | 설명 | 임계값 |
+|------|------|--------|
+| API 응답 시간 | 평균 응답 시간 | 5초 이상 경고 |
+| 에러율 | API 에러 비율 | 5% 이상 경고 |
+| Rate Limit | 제한 초과 횟수 | 모니터링 |
+
+---
+
+## 금지 사항 요약
+
+### 절대 금지
+- 🚫 API 키, 비밀번호 하드코딩
+- 🚫 .env 파일 Git 커밋
+- 🚫 eval(), new Function() 사용
+- 🚫 SQL String Concatenation
+- 🚫 HTTP 사용 (HTTPS 필수)
+- 🚫 민감 정보 로깅
+- 🚫 any 타입 남용
+- 🚫 escape 없이 dangerouslySetInnerHTML 사용
+
+---
+
+## 참고 문서
+
+- [Next.js 14 Documentation](https://nextjs.org/docs)
+- [NextAuth.js Documentation](https://next-auth.js.org)
+- [Prisma Documentation](https://www.prisma.io/docs)
+- [ShadCN UI](https://ui.shadcn.com)
+- [OWASP Top 10](https://owasp.org/Top10/)
+- [SECURITY.md](./SECURITY.md)

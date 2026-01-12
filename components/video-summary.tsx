@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Play, FileText, Share2, Bookmark, X, Facebook, Twitter, Instagram } from 'lucide-react';
@@ -15,6 +15,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+/**
+ * HTML 특수문자 이스케이프 (XSS 방지)
+ */
+function escapeHtml(text: string): string {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
 
 interface VideoSummaryProps {
   video: {
@@ -182,13 +197,13 @@ export function VideoSummary({ video, courseType }: VideoSummaryProps) {
 
         {showSummary && summary && (
           <div className="mt-4 space-y-4 bg-muted/50 p-4 rounded-lg">
-            <div 
+            <div
               className="prose prose-sm dark:prose-invert"
-              dangerouslySetInnerHTML={{ 
-                __html: summary
+              dangerouslySetInnerHTML={{
+                __html: escapeHtml(summary)
                   .replace(/\n/g, '<br/>')
                   .replace(/#(\w+)/g, '<span class="text-primary">#$1</span>')
-              }} 
+              }}
             />
           </div>
         )}
