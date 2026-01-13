@@ -38,10 +38,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      # 보안 업데이트는 별도로 처리 (우선순위 높음)
-      security-updates:
-        update-types:
-          - "security"
     # Ignore major version updates for critical packages
     ignore:
       - dependency-name: "next"
