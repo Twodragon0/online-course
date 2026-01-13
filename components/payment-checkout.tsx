@@ -13,6 +13,12 @@ import { Card } from '@/components/ui/card';
 import { Loader2, CreditCard, Lock, CheckCircle2, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import type { Stripe } from '@stripe/stripe-js';
+
+// Stripe 타입 확장 (redirectToCheckout 메서드 포함)
+interface StripeWithRedirect extends Stripe {
+  redirectToCheckout(options: { sessionId: string }): Promise<{ error?: { message?: string } }>;
+}
 
 // Stripe 초기화
 const stripePromise = loadStripe(
@@ -207,12 +213,24 @@ export function PaymentCheckout({
           // Stripe Checkout으로 리다이렉트
           const stripe = await stripePromise;
           if (stripe && data.sessionId) {
-            const { error: redirectError } = await stripe.redirectToCheckout({
-              sessionId: data.sessionId,
-            });
-            
-            if (redirectError) {
-              setError(redirectError.message || '결제 페이지로 이동할 수 없습니다.');
+            // redirectToCheckout 메서드 사용
+            const stripeWithRedirect = stripe as StripeWithRedirect;
+            if (stripeWithRedirect.redirectToCheckout) {
+              try {
+                const { error: redirectError } = await stripeWithRedirect.redirectToCheckout({
+                  sessionId: data.sessionId,
+                });
+                
+                if (redirectError) {
+                  setError(redirectError.message || '결제 페이지로 이동할 수 없습니다.');
+                  setIsLoading(false);
+                }
+              } catch (redirectErr) {
+                setError('결제 페이지로 이동하는 중 오류가 발생했습니다.');
+                setIsLoading(false);
+              }
+            } else {
+              setError('Stripe Checkout을 초기화할 수 없습니다.');
               setIsLoading(false);
             }
           } else {

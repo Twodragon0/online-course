@@ -19,6 +19,11 @@ interface PaymentMethodSelectorProps {
 
 type PaymentMethod = 'stripe' | 'paypal' | null;
 
+// Type guard helper
+const isStripe = (method: PaymentMethod): method is 'stripe' => {
+  return method === 'stripe';
+};
+
 export function PaymentMethodSelector({
   planId,
   planName,
@@ -97,7 +102,7 @@ export function PaymentMethodSelector({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card
           className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
-            selectedMethod === 'stripe'
+            isStripe(selectedMethod)
               ? 'ring-2 ring-primary'
               : 'hover:border-primary/50'
           }`}
@@ -114,10 +119,10 @@ export function PaymentMethodSelector({
               </p>
             </div>
             <Button
-              variant={selectedMethod === 'stripe' ? 'default' : 'outline'}
+              variant={isStripe(selectedMethod) ? 'default' : 'outline'}
               className="w-full"
             >
-              {selectedMethod === 'stripe' ? '선택됨' : '선택하기'}
+              {isStripe(selectedMethod) ? '선택됨' : '선택하기'}
             </Button>
           </div>
         </Card>
