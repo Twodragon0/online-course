@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Video, MessageSquare, Zap, ArrowRight, Sparkles, CheckCircle2 } from "lucide-react";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-const DashboardPage: React.FC = () => {
+const DashboardPageContent: React.FC = () => {
   const { data: session, update } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -18,6 +18,8 @@ const DashboardPage: React.FC = () => {
 
   // 결제 성공 알림 처리
   useEffect(() => {
+    if (!searchParams) return;
+    
     const payment = searchParams.get('payment');
     const plan = searchParams.get('plan');
     
@@ -199,6 +201,24 @@ const DashboardPage: React.FC = () => {
         )}
       </div>
     </div>
+  );
+}
+
+const DashboardPage: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <div className="py-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="space-y-2 mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+              Loading...
+            </h1>
+          </div>
+        </div>
+      </div>
+    }>
+      <DashboardPageContent />
+    </Suspense>
   );
 }
 

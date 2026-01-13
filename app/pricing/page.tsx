@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { CheckCircle2, Sparkles, Zap, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
@@ -66,7 +66,7 @@ const itemVariants = {
   }
 };
 
-const PricingPage: React.FC = () => {
+const PricingPageContent: React.FC = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -75,6 +75,8 @@ const PricingPage: React.FC = () => {
 
   // URL 파라미터에서 결제 성공/실패 확인
   React.useEffect(() => {
+    if (!searchParams) return;
+    
     const payment = searchParams.get('payment');
     const canceled = searchParams.get('canceled');
     
@@ -241,6 +243,27 @@ const PricingPage: React.FC = () => {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+const PricingPage: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <div className="py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+              Simple, Transparent Pricing
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-muted-foreground max-w-2xl mx-auto">
+              Choose the plan that works best for you. All plans include access to our platform and basic features.
+            </p>
+          </div>
+        </div>
+      </div>
+    }>
+      <PricingPageContent />
+    </Suspense>
   );
 }
 
