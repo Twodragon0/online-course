@@ -3,6 +3,8 @@
 import { useEffect, useState, Suspense } from 'react';
 import { VideoCard } from '@/components/video-card';
 import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
+import { FileVideo } from "lucide-react";
 
 interface Video {
   driveFileId?: string;
@@ -102,17 +104,19 @@ function CoursesContent() {
     return (
       <div className="container mx-auto py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-8">
-            <div className="space-y-4">
-              <div className="h-10 bg-muted rounded-lg w-1/3"></div>
-              <div className="h-6 bg-muted rounded-lg w-1/4"></div>
+          <div className="animate-pulse space-y-16">
+            <div className="text-center space-y-4">
+              <div className="h-12 bg-muted rounded-lg w-1/3 mx-auto"></div>
+              <div className="h-6 bg-muted rounded-lg w-1/2 mx-auto"></div>
             </div>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="border rounded-xl p-6 space-y-4">
-                  <div className="aspect-video bg-muted rounded-lg"></div>
-                  <div className="h-6 bg-muted rounded w-3/4"></div>
-                  <div className="h-4 bg-muted rounded w-1/2"></div>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="card-enhanced p-0 overflow-hidden">
+                  <div className="aspect-video bg-muted"></div>
+                  <div className="p-6 space-y-4">
+                    <div className="h-6 bg-muted rounded w-3/4"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -124,49 +128,85 @@ function CoursesContent() {
 
   return (
     <div className="container mx-auto py-24 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-16">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
+      <div className="max-w-7xl mx-auto space-y-20">
+        {/* Hero Header */}
+        <div className="text-center space-y-6 relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/10 rounded-3xl blur-3xl -z-10" />
+          <motion.h1 
+            className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight gradient-text"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
             Our Courses
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          </motion.h1>
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Master DevSecOps and cloud security with our comprehensive course collection
           </p>
         </div>
 
-        {sections.map((section) => (
-          <section key={section.id} className="space-y-8">
-            <div className="space-y-3">
-              <h2 className="text-3xl font-bold">{section.title}</h2>
-              <p className="text-muted-foreground text-lg">{section.description}</p>
+        {/* Course Sections */}
+        {sections.map((section, sectionIndex) => (
+          <motion.section 
+            key={section.id} 
+            className="space-y-8"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: sectionIndex * 0.1 }}
+          >
+            <div className="space-y-4 pb-4 border-b border-border">
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground">{section.title}</h2>
+              <p className="text-muted-foreground text-lg leading-relaxed max-w-3xl">
+                {section.description}
+              </p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {section.videos && section.videos.length > 0 && section.videos.map((video) => (
-                <VideoCard
+              {section.videos && section.videos.length > 0 && section.videos.map((video, videoIndex) => (
+                <motion.div
                   key={video.id}
-                  id={video.id}
-                  title={video.title}
-                  description={video.description}
-                  driveFileId={video.driveFileId || video.url}
-                />
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: videoIndex * 0.05 }}
+                >
+                  <VideoCard
+                    id={video.id}
+                    title={video.title}
+                    description={video.description}
+                    driveFileId={video.driveFileId || video.url}
+                  />
+                </motion.div>
               ))}
-              {section.driveFileIds && Object.entries(section.driveFileIds).map(([key, fileId]) => (
-                <VideoCard
+              {section.driveFileIds && Object.entries(section.driveFileIds).map(([key, fileId], index) => (
+                <motion.div
                   key={key}
-                  id={key}
-                  title={`${section.title} - ${key}`}
-                  description={section.description}
-                  driveFileId={fileId}
-                />
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                >
+                  <VideoCard
+                    id={key}
+                    title={`${section.title} - ${key}`}
+                    description={section.description}
+                    driveFileId={fileId}
+                  />
+                </motion.div>
               ))}
               {(!section.videos || section.videos.length === 0) && (!section.driveFileIds || Object.keys(section.driveFileIds).length === 0) && (
-                <div className="col-span-full text-center py-8 text-muted-foreground">
-                  이 코스에는 아직 비디오가 없습니다.
+                <div className="col-span-full text-center py-16">
+                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted mb-4">
+                    <FileVideo className="h-10 w-10 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground text-lg">
+                    이 코스에는 아직 비디오가 없습니다.
+                  </p>
                 </div>
               )}
             </div>
-          </section>
+          </motion.section>
         ))}
 
       </div>

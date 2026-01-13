@@ -39,21 +39,32 @@ export default async function VideoPage({ params }: PageProps) {
   }
 
   return (
-    <div className="container mx-auto p-4 space-y-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="space-y-4">
-          <h1 className="text-2xl font-bold">{video.title}</h1>
+    <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header Section */}
+        <div className="space-y-4 pb-6 border-b border-border">
+          {video.course && (
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+              <Book className="h-4 w-4" />
+              {video.course.title}
+            </div>
+          )}
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground leading-tight">
+            {video.title}
+          </h1>
           {video.description && (
-            <p className="text-muted-foreground">
+            <p className="text-lg text-muted-foreground leading-relaxed max-w-3xl">
               {video.description}
             </p>
           )}
         </div>
         
-        <div className="mt-6">
-          <VideoPlayer url={video.url} />
+        {/* Video Player Section */}
+        <div className="relative">
+          <VideoPlayer url={video.url} title={video.title} />
         </div>
 
+        {/* Chat Bot */}
         <div className="fixed bottom-4 right-4 z-50">
           <ChatBot videoId={video.id} isEmbedded={false} />
         </div>

@@ -29,6 +29,19 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    
+    /* Enhanced design tokens */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    /* Category colors for courses */
+    --color-devsecops: 139 92% 246;
+    --color-devops: 16 185% 129;
+    --color-security: 239 68% 68%;
+    --color-cloud: 6 182% 212;
+    --color-kubernetes: 50 108% 229;
   }
  
   .dark {
@@ -65,6 +78,8 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   /* Smooth scrolling */
@@ -84,6 +99,7 @@
   
   ::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/30 rounded-full;
+    transition: background-color 0.2s;
   }
   
   ::-webkit-scrollbar-thumb:hover {
@@ -102,5 +118,78 @@
     background-image: 
       linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  }
+  
+  /* Focus styles for accessibility */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+  
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Enhanced card styles */
+  .card-enhanced {
+    @apply relative overflow-hidden rounded-xl border bg-card shadow-sm;
+    transition: all 0.3s ease;
+  }
+  
+  .card-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--color-devsecops)));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+  
+  .card-enhanced:hover::before {
+    transform: scaleX(1);
+  }
+  
+  .card-enhanced:hover {
+    @apply shadow-lg -translate-y-1;
+    border-color: hsl(var(--primary));
+  }
+  
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent;
+  }
+  
+  /* Video card specific styles */
+  .video-card-thumbnail {
+    @apply relative aspect-video rounded-lg overflow-hidden bg-muted;
+    transition: transform 0.3s ease;
+  }
+  
+  .video-card-thumbnail:hover {
+    transform: scale(1.02);
+  }
+  
+  /* Progress bar */
+  .progress-bar {
+    @apply h-1 bg-muted rounded-full overflow-hidden;
+  }
+  
+  .progress-bar-fill {
+    @apply h-full bg-primary rounded-full;
+    transition: width 0.3s ease;
   }
 } 

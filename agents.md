@@ -4,7 +4,19 @@
 
 ## 프로젝트 개요
 
-이 프로젝트는 Next.js 14 기반의 현대적인 온라인 코스 플랫폼입니다. DevSecOps 및 클라우드 보안 강의를 제공하며, AI 기반 채팅 어시스턴트, 비디오 재생, 구독 및 결제 기능을 포함합니다.
+이 프로젝트는 Next.js 14 기반의 멀티 플랫폼 생태계입니다. 여러 도메인으로 분리된 독립적인 플랫폼들이 서로 보완적인 관계를 유지하며, 사용자에게 통합된 경험을 제공합니다.
+
+### 플랫폼 구성
+- **tech.2twodragon.com** (✅ 운영 중): 기술 블로그 및 자격증 관리
+- **edu.2twodragon.com** (⭐ 현재 프로젝트): 온라인 코스 플랫폼 - DevSecOps 및 클라우드 보안 강의
+- **cooking.2twodragon.com** (🔮 예정): 요리 레시피 및 영상 공유
+- **bit.2twodragon.com** (🔮 예정): 비트 거래 및 포트폴리오 관리
+
+### 핵심 원칙
+- **독립성**: 각 플랫폼은 독립적으로 운영 가능
+- **연결성**: 플랫폼 간 데이터 및 사용자 정보 공유
+- **비용 효율성**: 1인 비즈니스에 최적화된 아키텍처
+- **보안성**: 플랫폼 간 통신 보안 보장
 
 ### 주요 기능
 
@@ -360,8 +372,35 @@ npx prisma generate
 - `DATABASE_URL` 형식 확인
 - PostgreSQL 서버 실행 상태 확인
 
+## 멀티 플랫폼 아키텍처
+
+### 플랫폼 간 통신
+- 공유 데이터베이스 (PostgreSQL)를 통한 사용자 정보 공유
+- API Gateway 패턴을 통한 플랫폼 간 싱크
+- 싱크 클라이언트 라이브러리를 통한 통합 관리
+
+### 비용 효율성
+- **Phase 1 (초기)**: $1/월 - 무료 티어 활용
+- **Phase 2 (성장기)**: $36-41/월 - 기본 Pro 플랜
+- **Phase 3 (확장기)**: $107-137/월 - 고급 기능
+- **Phase 4 (성숙기)**: $222-302/월 - 전체 최적화
+
+### 비즈니스 모델
+- **online-course**: 구독 모델 (Free/Pro $29/월/Enterprise $99/월)
+- **tech-blog**: 광고 수익 (AdSense, 제휴)
+- **cooking**: 제휴 마케팅, YouTube 수익화
+- **bit-dragon**: 거래 수수료, 프리미엄 구독
+
+자세한 내용은 [멀티 플랫폼 아키텍처 문서](./docs/MULTI-PLATFORM-ARCHITECTURE.md)를 참조하세요.
+
 ## 추가 리소스
 
+### 프로젝트 문서
+- [멀티 플랫폼 아키텍처](./docs/MULTI-PLATFORM-ARCHITECTURE.md)
+- [싱크 구현 가이드](./docs/SYNC-IMPLEMENTATION-GUIDE.md)
+- [빠른 참조 가이드](./docs/MULTI-PLATFORM-QUICK-REFERENCE.md)
+
+### 외부 문서
 - [Next.js 문서](https://nextjs.org/docs)
 - [Prisma 문서](https://www.prisma.io/docs)
 - [ShadCN UI 문서](https://ui.shadcn.com)
@@ -371,6 +410,7 @@ npx prisma generate
 ## 라이선스
 
 이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+
 
 
 

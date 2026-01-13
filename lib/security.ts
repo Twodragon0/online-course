@@ -364,4 +364,3 @@ export async function invalidateCache(pattern: string): Promise<void> {
     console.error('Cache invalidation error:', error);
   }
 }
-

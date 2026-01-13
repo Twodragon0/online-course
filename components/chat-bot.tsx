@@ -72,12 +72,15 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
 
   useEffect(() => {
     if (!isEmbedded) {
+      // 아이콘을 즉시 표시하되, 애니메이션은 5초 후에
+      setShowIcon(true);
       const timer = setTimeout(() => {
-        setShowIcon(true);
         setHasShaken(true);
         setTimeout(() => setHasShaken(false), 1000);
       }, 5000);
       return () => clearTimeout(timer);
+    } else {
+      setShowIcon(true);
     }
   }, [isEmbedded]);
 
@@ -508,31 +511,36 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
     }
   }, [isOpen]);
 
-  if (!isOpen && !isEmbedded) {
-    return (
-      <motion.div
-        animate={hasShaken ? {
-          x: [0, -5, 5, -5, 5, 0],
-        } : {}}
-        transition={hasShaken ? {
-          duration: 0.5,
-          ease: "easeInOut",
-        } : {}}
-        className="fixed bottom-4 right-4"
+  // 채팅 아이콘 버튼 (항상 오른쪽 하단에 고정)
+  const chatIconButton = !isEmbedded && showIcon ? (
+    <motion.div
+      animate={hasShaken ? {
+        x: [0, -5, 5, -5, 5, 0],
+      } : {}}
+      transition={hasShaken ? {
+        duration: 0.5,
+        ease: "easeInOut",
+      } : {}}
+      className="fixed bottom-4 right-4 z-50"
+      style={{ 
+        display: isOpen ? 'none' : 'block'
+      }}
+    >
+      <Button
+        onClick={() => setIsOpen(true)}
+        className={cn(
+          "rounded-full w-14 h-14 p-0",
+          "shadow-lg hover:shadow-xl",
+          "transition-all duration-200",
+          "bg-primary hover:bg-primary/90",
+          "text-primary-foreground"
+        )}
+        aria-label="AI 채팅 열기"
       >
-        <Button
-          onClick={() => setIsOpen(true)}
-          className={cn(
-            "rounded-full w-12 h-12 p-0",
-            "shadow-lg hover:shadow-xl",
-            "transition-all duration-200"
-          )}
-        >
-          <MessageSquare className="h-6 w-6" />
-        </Button>
-      </motion.div>
-    );
-  }
+        <MessageSquare className="h-6 w-6" />
+      </Button>
+    </motion.div>
+  ) : null;
 
   const chatContent = (
     <Card className={cn(
@@ -664,32 +672,37 @@ export function ChatBot({ videoId, isEmbedded = false }: ChatBotProps) {
   }
 
   return (
-    <Resizable
-      size={size}
-      minHeight={400}
-      minWidth={300}
-      maxHeight="90vh"
-      maxWidth="95vw"
-      onResizeStop={(e, direction, ref, d) => {
-        setSize({
-          width: size.width + d.width,
-          height: size.height + d.height,
-        });
-      }}
-      enable={{
-        top: true,
-        right: true,
-        bottom: true,
-        left: true,
-        topRight: true,
-        bottomRight: true,
-        bottomLeft: true,
-        topLeft: true,
-      }}
-      className="fixed bottom-4 right-4 z-50"
-      style={{ position: 'fixed' }}
-    >
-      {chatContent}
-    </Resizable>
+    <>
+      {chatIconButton}
+      {isOpen && (
+        <Resizable
+          size={size}
+          minHeight={400}
+          minWidth={300}
+          maxHeight="90vh"
+          maxWidth="95vw"
+          onResizeStop={(e, direction, ref, d) => {
+            setSize({
+              width: size.width + d.width,
+              height: size.height + d.height,
+            });
+          }}
+          enable={{
+            top: true,
+            right: true,
+            bottom: true,
+            left: true,
+            topRight: true,
+            bottomRight: true,
+            bottomLeft: true,
+            topLeft: true,
+          }}
+          className="fixed bottom-4 right-4 z-50"
+          style={{ position: 'fixed' }}
+        >
+          {chatContent}
+        </Resizable>
+      )}
+    </>
   );
 } 

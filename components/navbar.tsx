@@ -21,11 +21,17 @@ export function Navbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40 shadow-sm">
+    <header className="fixed inset-x-0 top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40 shadow-sm transition-all duration-300">
       <nav className="flex items-center justify-between p-4 sm:p-6 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
         <div className="flex lg:flex-1">
-          <Link href="/" className="-m-1.5 p-1.5 text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
-            OnlineCourse
+          <Link 
+            href="/" 
+            className="group -m-1.5 p-1.5 text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary via-primary/90 to-primary/80 bg-clip-text text-transparent hover:opacity-90 transition-all"
+          >
+            <span className="relative">
+              OnlineCourse
+              <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+            </span>
           </Link>
         </div>
         
