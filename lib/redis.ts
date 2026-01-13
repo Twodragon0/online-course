@@ -56,8 +56,11 @@ function validateRedisUrl(): boolean {
     
     const isAllowed = allowedHosts.some(allowed => {
       if (allowed.includes('*')) {
-        const pattern = allowed.replace('*', '.*');
-        return new RegExp(`^${pattern}$`).test(hostname);
+        // 정규식 특수 문자 이스케이프 처리
+        const escaped = allowed
+          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')  // 모든 정규식 특수 문자 이스케이프
+          .replace(/\\\*/g, '.*');  // 이스케이프된 *를 .*로 변환
+        return new RegExp(`^${escaped}$`).test(hostname);
       }
       return hostname === allowed || hostname.endsWith('.' + allowed);
     });
@@ -70,9 +73,23 @@ function validateRedisUrl(): boolean {
     return true;
   } catch {
     // URL 파싱 실패 시 기본 패턴 체크 (하위 호환성)
-    return redisUrl.startsWith('redis://') || 
-           redisUrl.startsWith('rediss://') ||
-           redisUrl.includes('upstash.io');
+    // includes() 대신 정확한 도메인 매칭 사용
+    if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
+      return false;
+    }
+    
+    // upstash.io 도메인 검증 (정확한 매칭)
+    try {
+      // redis:// 또는 rediss:// 이후 부분에서 호스트 추출 시도
+      const urlPart = redisUrl.split('://')[1] || '';
+      const hostPart = urlPart.split('/')[0]?.split('@').pop() || '';
+      const hostname = hostPart.split(':')[0] || '';
+      
+      // 정확한 도메인 매칭만 허용
+      return hostname === 'upstash.io' || hostname.endsWith('.upstash.io');
+    } catch {
+      return false;
+    }
   }
 }
 

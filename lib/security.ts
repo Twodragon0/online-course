@@ -184,7 +184,8 @@ export function isValidEmail(email: string): boolean {
   
   // 기본 문자 검증 (알파벳, 숫자, 일부 특수문자만 허용)
   // ReDoS 방지를 위해 단순한 문자 클래스 사용
-  const validEmailChars = /^[a-zA-Z0-9._+-@]+$/;
+  // 특수 문자 - 와 + 는 문자 클래스 내에서 이스케이프하거나 끝에 배치
+  const validEmailChars = /^[a-zA-Z0-9._+@-]+$/;
   if (!validEmailChars.test(email)) {
     return false;
   }

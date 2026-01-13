@@ -83,23 +83,39 @@ def send_to_response_url(response_url: str, message: str) -> dict:
     if not isinstance(response_url, str):
         return {"ok": False, "error": "유효하지 않은 response_url 형식입니다."}
     
+    # URL 길이 제한 (파싱 전에 체크)
+    if len(response_url) > 2048:
+        return {"ok": False, "error": "response_url이 너무 깁니다."}
+    
     # URL 파싱 및 검증
     try:
         from urllib.parse import urlparse
         parsed = urlparse(response_url)
         
-        # 허용된 호스트만 허용
+        # 호스트명이 없는 경우 거부
+        if not parsed.hostname:
+            return {"ok": False, "error": "유효하지 않은 response_url 호스트입니다."}
+        
+        # 정규화된 호스트명 검증 (대소문자 무시)
+        hostname_lower = parsed.hostname.lower()
+        
+        # 허용된 호스트만 허용 (정확한 매칭)
         allowed_hosts = ['hooks.slack.com']
-        if parsed.hostname not in allowed_hosts:
+        if hostname_lower not in allowed_hosts:
             return {"ok": False, "error": "유효하지 않은 response_url 호스트입니다."}
         
         # HTTPS만 허용
         if parsed.scheme != 'https':
             return {"ok": False, "error": "HTTPS만 허용됩니다."}
         
-        # URL 길이 제한
-        if len(response_url) > 2048:
-            return {"ok": False, "error": "response_url이 너무 깁니다."}
+        # 포트가 명시된 경우 거부 (기본 포트만 허용)
+        if parsed.port is not None and parsed.port != 443:
+            return {"ok": False, "error": "유효하지 않은 response_url 포트입니다."}
+        
+        # 경로가 /services/로 시작하는지 확인 (Slack response URL 형식)
+        if not parsed.path.startswith('/services/'):
+            return {"ok": False, "error": "유효하지 않은 response_url 경로입니다."}
+        
     except Exception as e:
         return {"ok": False, "error": f"response_url 검증 실패: {str(e)}"}
 
@@ -108,8 +124,13 @@ def send_to_response_url(response_url: str, message: str) -> dict:
         "text": message
     }
 
-    # 타임아웃 설정 (SSRF 방지)
-    response = requests.post(response_url, json=payload, timeout=10)
+    # 타임아웃 설정 및 리다이렉트 비활성화 (SSRF 방지)
+    response = requests.post(
+        response_url,
+        json=payload,
+        timeout=10,
+        allow_redirects=False  # 리다이렉트 방지
+    )
 
     if response.status_code != 200:
         raise Exception(f"response_url 발송 실패: {response.text}")

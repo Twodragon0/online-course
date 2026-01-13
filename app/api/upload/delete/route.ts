@@ -66,13 +66,11 @@ export async function DELETE(request: NextRequest) {
         );
       }
     } catch {
-      // URL 파싱 실패 시 기본 검증
-      if (!url.includes('blob.vercel-storage.com')) {
-        return NextResponse.json(
-          { error: '유효하지 않은 파일 URL입니다.' },
-          { status: 400 }
-        );
-      }
+      // URL 파싱 실패 시 거부 (보안상 안전한 선택)
+      return NextResponse.json(
+        { error: '유효하지 않은 파일 URL 형식입니다.' },
+        { status: 400 }
+      );
     }
 
     // 파일 삭제
