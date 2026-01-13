@@ -2,15 +2,42 @@
 
 import React, { useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Video, MessageSquare, Zap, ArrowRight, Sparkles } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Video, MessageSquare, Zap, ArrowRight, Sparkles, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 const DashboardPage: React.FC = () => {
   const { data: session, update } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const isPro = session?.user?.subscriptionStatus === 'active';
+
+  // 결제 성공 알림 처리
+  useEffect(() => {
+    const payment = searchParams.get('payment');
+    const plan = searchParams.get('plan');
+    
+    if (payment === 'success') {
+      const planName = plan === 'pro' ? 'Pro' : 'Basic';
+      toast.success(
+        `결제가 완료되었습니다! ${planName} 플랜이 활성화되었습니다.`,
+        {
+          duration: 5000,
+          icon: <CheckCircle2 className="h-5 w-5 text-green-500" />,
+        }
+      );
+      
+      // URL에서 파라미터 제거
+      router.replace('/dashboard', { scroll: false });
+      
+      // 세션 갱신
+      update();
+    }
+  }, [searchParams, router, update]);
 
   // 세션 갱신 (구독 상태 변경 확인)
   useEffect(() => {

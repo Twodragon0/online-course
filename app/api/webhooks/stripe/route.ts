@@ -59,6 +59,33 @@ export async function POST(request: Request) {
 
     // 이벤트 타입에 따른 처리
     switch (event.type) {
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        
+        // Payment Intent 성공 시 구독 활성화
+        if (prisma && paymentIntent.metadata?.userId && paymentIntent.metadata?.planId) {
+          try {
+            const email = paymentIntent.metadata.userId;
+            const planId = paymentIntent.metadata.planId;
+            
+            await prisma.user.update({
+              where: { email },
+              data: {
+                subscriptionStatus: 'active',
+                stripeCustomerId: typeof paymentIntent.customer === 'string' 
+                  ? paymentIntent.customer 
+                  : paymentIntent.customer?.id || null,
+              },
+            });
+            
+            console.log(`Payment succeeded for user: ${email}, plan: ${planId}`);
+          } catch (error) {
+            console.error('Failed to update subscription from payment intent:', error instanceof Error ? error.message : 'Unknown error');
+          }
+        }
+        break;
+      }
+
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         

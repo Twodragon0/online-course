@@ -1002,8 +1002,8 @@ const syncToken = jwt.sign(
 // API Gateway CORS 설정
 const corsOptions = {
   origin: [
-    'https://tech-blog.dragon.com',
-    'https://course.dragon.com',
+    'https://tech.2twodragon.com',
+    'https://edu.2twodragon.com',
     'https://cooking.dragon.com',
   ],
   credentials: true,
@@ -1204,7 +1204,7 @@ SHARED_DATABASE_URL="postgresql://..."
 # 싱크 서비스
 SYNC_API_KEY="..."
 SYNC_JWT_SECRET="..."
-API_GATEWAY_URL="https://api.dragon.com"
+API_GATEWAY_URL="https://api.2twodragon.com"
 
 # 인증
 NEXTAUTH_SECRET="..."
