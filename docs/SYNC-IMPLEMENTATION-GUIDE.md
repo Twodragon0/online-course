@@ -39,6 +39,10 @@ export enum ContentType {
   RECIPE = 'recipe',
   CERTIFICATION = 'certification',
   COURSE = 'course',
+  MUSIC = 'music',
+  MUSIC_VIDEO = 'music-video',
+  BEAT = 'beat',
+  PLAYLIST = 'playlist',
 }
 
 export enum SyncDirection {

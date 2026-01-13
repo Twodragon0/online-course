@@ -7,7 +7,7 @@
 | **tech-blog** | https://tech.2twodragon.com | ✅ 운영 중 | 기술 블로그, 자격증 관리 |
 | **online-course** | https://edu.2twodragon.com | ⭐ 개발 중 | 비디오 강의, AI 채팅, 구독 |
 | **cooking** | https://cooking.2twodragon.com | 🔮 예정 | 레시피, YouTube/네이버 연동 |
-| **bit-dragon** | https://bit.2twodragon.com | 🔮 예정 | 비트 거래, 포트폴리오 |
+| **bit-dragon** | https://bit.2twodragon.com | 🔮 예정 | AI 음악/비디오 생성, 음악 스트리밍 |
 
 ## 💰 비용 구조 (1인 비즈니스)
 
@@ -45,8 +45,10 @@
 - 프리미엄 레시피
 
 ### bit-dragon
-- 거래 수수료 (0.1-0.5%)
-- 프리미엄 분석 도구
+- 구독 모델 (Free/Pro $19/월/Creator $49/월)
+- 음악 판매 ($0.99-4.99/곡)
+- 뮤직 비디오 판매 ($4.99-19.99/비디오)
+- 비트/EDM 팩 판매 ($9.99-49.99/팩)
 
 ## 📊 예상 수익
 

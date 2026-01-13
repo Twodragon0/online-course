@@ -529,6 +529,201 @@ model CookingVideo {
 }
 ```
 
+#### bit-dragon 스키마
+```prisma
+model BitDragonProfile {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id])
+  
+  bio                 String?
+  artistName          String?
+  spotifyUrl          String?
+  soundcloudUrl       String?
+  youtubeChannelUrl   String?
+  
+  tracks              MusicTrack[]
+  videos              MusicVideo[]
+  playlists           Playlist[]
+  beats               Beat[]
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model MusicTrack {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String?   @db.Text
+  artistId            String
+  artist              BitDragonProfile @relation(fields: [artistId], references: [id])
+  
+  // 음악 파일
+  audioUrl            String     // MP3/WAV 파일 URL
+  audioFormat         String     // mp3, wav, flac
+  duration            Int        // 초 단위
+  fileSize            Int        // 바이트
+  
+  // 메타데이터
+  genre               String?
+  bpm                 Int?
+  key                 String?    // C, D, E 등
+  tags                String[]
+  
+  // AI 생성 정보
+  aiGenerated         Boolean    @default(false)
+  aiProvider          String?     // suno, udio, musicgen
+  aiPrompt            String?     @db.Text
+  generationStatus    String?     // pending, processing, completed, failed
+  
+  // 판매 정보
+  price               Float?      // 판매 가격
+  isFree              Boolean     @default(false)
+  downloadCount       Int         @default(0)
+  streamCount         Int         @default(0)
+  
+  // 통계
+  plays               Int         @default(0)
+  likes               Int         @default(0)
+  shares              Int         @default(0)
+  
+  // 외부 연동
+  spotifyId           String?
+  youtubeId           String?
+  soundcloudId        String?
+  
+  // 싱크 정보
+  syncId              String?     @unique
+  crossPlatformLinks  CrossPlatformContent[]
+  videos              MusicVideo[]
+  playlists           PlaylistTrack[]
+  
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  
+  @@index([artistId])
+  @@index([genre])
+  @@index([aiGenerated])
+  @@index([price])
+}
+
+model MusicVideo {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String?   @db.Text
+  trackId             String
+  track               MusicTrack @relation(fields: [trackId], references: [id])
+  
+  artistId            String
+  artist              BitDragonProfile @relation(fields: [artistId], references: [id])
+  
+  // 비디오 파일
+  videoUrl            String     // MP4 파일 URL
+  thumbnailUrl        String?
+  duration            Int        // 초 단위
+  resolution          String?    // 1080p, 4K 등
+  
+  // AI 생성 정보
+  aiGenerated         Boolean    @default(false)
+  aiProvider          String?     // runway, pika, stable-video
+  aiPrompt            String?     @db.Text
+  generationStatus    String?     // pending, processing, completed, failed
+  
+  // 판매 정보
+  price               Float?      // 판매 가격
+  isFree              Boolean     @default(false)
+  hasWatermark        Boolean     @default(true)
+  downloadCount       Int         @default(0)
+  
+  // 통계
+  views               Int         @default(0)
+  likes               Int         @default(0)
+  shares              Int         @default(0)
+  
+  // 외부 연동
+  youtubeId           String?
+  
+  // 싱크 정보
+  syncId              String?     @unique
+  crossPlatformLinks  CrossPlatformContent[]
+  
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  
+  @@index([trackId])
+  @@index([artistId])
+  @@index([aiGenerated])
+}
+
+model Beat {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String?   @db.Text
+  artistId            String
+  artist              BitDragonProfile @relation(fields: [artistId], references: [id])
+  
+  // 비트 파일
+  audioUrl            String
+  previewUrl          String?    // 30초 미리보기
+  duration            Int
+  bpm                 Int
+  key                 String?
+  genre               String?     // hip-hop, trap, edm 등
+  
+  // AI 생성 정보
+  aiGenerated         Boolean    @default(false)
+  aiProvider          String?
+  aiPrompt            String?    @db.Text
+  
+  // 판매 정보
+  price               Float
+  downloadCount       Int         @default(0)
+  
+  // 통계
+  plays               Int         @default(0)
+  likes               Int         @default(0)
+  
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  
+  @@index([artistId])
+  @@index([genre])
+  @@index([bpm])
+}
+
+model Playlist {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String?   @db.Text
+  artistId            String
+  artist              BitDragonProfile @relation(fields: [artistId], references: [id])
+  
+  isPublic            Boolean   @default(true)
+  coverImageUrl       String?
+  
+  tracks              PlaylistTrack[]
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  @@index([artistId])
+}
+
+model PlaylistTrack {
+  id                  String    @id @default(cuid())
+  playlistId          String
+  playlist           Playlist  @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  trackId             String
+  track               MusicTrack @relation(fields: [trackId], references: [id])
+  position            Int
+  
+  createdAt           DateTime  @default(now())
+  
+  @@unique([playlistId, trackId])
+  @@index([playlistId])
+}
+```
+
 ---
 
 ## 플랫폼 간 통신
@@ -1144,6 +1339,48 @@ OpenAI (Pro 플랜 전용):
 - 토큰 제한: 기본 2048 토큰
 - Fallback 체인: DeepSeek → Gemini → OpenAI
 
+**AI 음악 생성 서비스** (bit-dragon):
+```
+Suno AI:
+- 무료: 10곡/일
+- Pro: $10/월 - 무제한 생성
+- API: $0.05-0.10/곡 (예상)
+
+Udio:
+- 무료: 제한적
+- Pro: $10/월
+- API: $0.05-0.10/곡 (예상)
+
+MusicGen (Meta):
+- 오픈소스 (자체 호스팅 가능)
+- 비용: 서버 인프라만
+
+Stable Audio:
+- API: $0.10-0.20/곡
+```
+
+**AI 비디오 생성 서비스** (bit-dragon):
+```
+Runway ML:
+- Standard: $12/월 - 125초/월
+- Pro: $28/월 - 625초/월
+- API: $0.05/초
+
+Pika Labs:
+- Pro: $28/월
+- API: $0.05-0.10/초 (예상)
+
+Stable Video Diffusion:
+- 오픈소스 (자체 호스팅 가능)
+- 비용: 서버 인프라만
+```
+
+**비용 절감 전략 (bit-dragon)**:
+- 무료 티어 우선 활용 (Suno, Udio)
+- 생성된 콘텐츠 재사용 및 리믹스
+- 사용자별 생성 제한 (Free: 5곡/월, Pro: 무제한)
+- 큐 시스템으로 배치 처리
+
 **외부 API**:
 - YouTube Data API: 무료 (10,000 units/일)
 - 네이버 블로그: RSS 피드 무료 사용
@@ -1203,10 +1440,11 @@ Vercel Pro:               $20/월
 Vercel Postgres Pro:      $20/월
 Upstash Redis Pro:        $20/월
 DeepSeek API:             $20-50/월
+AI 음악/비디오 생성:       $50-100/월 (bit-dragon)
 Sentry Team:              $26/월 (선택)
 도메인:                   $1/월
 ─────────────────────────────────
-총 비용:                   $107-137/월
+총 비용:                   $157-237/월
 ```
 
 #### Phase 4: 성숙기 (10,000+ 사용자)
@@ -1215,10 +1453,12 @@ Vercel Pro:               $20/월
 Supabase Pro:             $25/월
 Upstash Redis Pro:        $50/월
 DeepSeek API:             $100-200/월
+AI 음악/비디오 생성:       $200-500/월 (bit-dragon)
+음악 스토리지 (R2):        $20-50/월
 Sentry Team:              $26/월
 도메인:                   $1/월
 ─────────────────────────────────
-총 비용:                   $222-302/월
+총 비용:                   $442-842/월
 ```
 
 ### 비용 증가 구간 및 대응 전략
@@ -1238,18 +1478,21 @@ Sentry Team:              $26/월
 - Upstash Redis Pro 업그레이드
 
 #### 구간 3: $50 → $150/월 (2,000-10,000 사용자)
-**트리거**: 트래픽 증가, 모니터링 필요
+**트리거**: 트래픽 증가, 모니터링 필요, bit-dragon 런칭
 **대응**:
 - Vercel Pro 업그레이드
 - CDN 최적화
 - 이미지 최적화 (WebP, lazy loading)
+- AI 음악/비디오 생성 서비스 추가
 
-#### 구간 4: $150 → $300/월 (10,000+ 사용자)
-**트리거**: 대규모 트래픽, 고급 기능 필요
+#### 구간 4: $150 → $500/월 (10,000+ 사용자)
+**트리거**: 대규모 트래픽, bit-dragon 성장, AI 생성 증가
 **대응**:
 - 데이터베이스 최적화
 - 캐싱 전략 고도화
 - 모니터링 도구 확장
+- 음악 스토리지 최적화 (Cloudflare R2)
+- AI 생성 큐 시스템 최적화
 
 ---
 
