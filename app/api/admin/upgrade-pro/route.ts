@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { prisma } from '@/lib/prisma';
-import { checkRateLimit, getClientIp } from '@/lib/security';
+import { checkRateLimit, getClientIp, isValidEmail } from '@/lib/security';
 
 /**
  * 관리자 이메일 목록 (환경 변수에서 가져오거나 하드코딩)
@@ -87,9 +87,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 이메일 형식 검증
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(targetEmail)) {
+    // 이메일 형식 검증 (ReDoS 방지를 위해 security.ts의 함수 사용)
+    if (!isValidEmail(targetEmail)) {
       return NextResponse.json(
         { error: '유효하지 않은 이메일 형식입니다.' },
         { status: 400 }

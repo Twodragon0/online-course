@@ -37,12 +37,42 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Blob URL 형식 검증
-    if (!url.includes('blob.vercel-storage.com')) {
-      return NextResponse.json(
-        { error: '유효하지 않은 파일 URL입니다.' },
-        { status: 400 }
-      );
+    // Blob URL 형식 검증 (SSRF 방지)
+    try {
+      const urlObj = new URL(url);
+      
+      // 허용된 호스트만
+      const allowedHosts = ['blob.vercel-storage.com'];
+      if (!allowedHosts.includes(urlObj.hostname)) {
+        return NextResponse.json(
+          { error: '유효하지 않은 파일 URL입니다.' },
+          { status: 400 }
+        );
+      }
+      
+      // HTTPS만 허용
+      if (urlObj.protocol !== 'https:') {
+        return NextResponse.json(
+          { error: 'HTTPS만 허용됩니다.' },
+          { status: 400 }
+        );
+      }
+      
+      // URL 길이 제한
+      if (url.length > 2048) {
+        return NextResponse.json(
+          { error: 'URL이 너무 깁니다.' },
+          { status: 400 }
+        );
+      }
+    } catch {
+      // URL 파싱 실패 시 기본 검증
+      if (!url.includes('blob.vercel-storage.com')) {
+        return NextResponse.json(
+          { error: '유효하지 않은 파일 URL입니다.' },
+          { status: 400 }
+        );
+      }
     }
 
     // 파일 삭제

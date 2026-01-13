@@ -16,19 +16,64 @@ const globalForRedis = global as unknown as { redis: RedisClient | null };
 type RedisMethod = 'get' | 'set' | 'del' | 'exists' | 'expire' | 'ttl' | 'incr' | 'keys';
 
 /**
- * Redis URL 검증
+ * Redis URL 검증 (SSRF 방지)
  */
 function validateRedisUrl(): boolean {
   const redisUrl = process.env.REDIS_URL;
   // REDIS_URL이 없어도 동작하도록 (선택적)
-  if (!redisUrl) {
+  if (!redisUrl || typeof redisUrl !== 'string') {
     return false;
   }
-  // Redis URL 형식 검증
-  return redisUrl.startsWith('redis://') || 
-         redisUrl.startsWith('rediss://') ||
-         redisUrl.startsWith('redis://default:') ||
-         redisUrl.includes('upstash.io');
+  
+  // URL 길이 제한
+  if (redisUrl.length > 2048) {
+    return false;
+  }
+  
+  try {
+    // URL 파싱 및 검증
+    const url = new URL(redisUrl);
+    
+    // 허용된 프로토콜만
+    const allowedProtocols = ['redis:', 'rediss:'];
+    if (!allowedProtocols.includes(url.protocol)) {
+      return false;
+    }
+    
+    // 허용된 호스트 패턴 검증
+    const hostname = url.hostname;
+    if (!hostname) {
+      return false;
+    }
+    
+    // localhost, 127.0.0.1, 또는 upstash.io 도메인만 허용
+    const allowedHosts = [
+      'localhost',
+      '127.0.0.1',
+      'upstash.io',
+      '*.upstash.io'
+    ];
+    
+    const isAllowed = allowedHosts.some(allowed => {
+      if (allowed.includes('*')) {
+        const pattern = allowed.replace('*', '.*');
+        return new RegExp(`^${pattern}$`).test(hostname);
+      }
+      return hostname === allowed || hostname.endsWith('.' + allowed);
+    });
+    
+    // upstash.io 도메인 체크
+    if (!isAllowed && !hostname.endsWith('.upstash.io')) {
+      return false;
+    }
+    
+    return true;
+  } catch {
+    // URL 파싱 실패 시 기본 패턴 체크 (하위 호환성)
+    return redisUrl.startsWith('redis://') || 
+           redisUrl.startsWith('rediss://') ||
+           redisUrl.includes('upstash.io');
+  }
 }
 
 /**

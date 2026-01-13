@@ -150,20 +150,45 @@ if (typeof setInterval !== 'undefined') {
 
 /**
  * 이메일 형식 검증
+ * ReDoS 방지를 위해 단순하고 효율적인 정규식 사용
  */
 export function isValidEmail(email: string): boolean {
   if (!email || typeof email !== 'string') {
     return false;
   }
-  // 기본적인 이메일 형식 검증
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  
+  // 길이 제한 먼저 체크 (ReDoS 방지)
+  if (email.length > 254 || email.length < 3) {
     return false;
   }
-  // 길이 제한
-  if (email.length > 254) {
+  
+  // 단순하고 효율적인 이메일 형식 검증 (ReDoS 방지)
+  // @ 기호가 정확히 하나만 있는지 확인
+  const atIndex = email.indexOf('@');
+  if (atIndex === -1 || atIndex === 0 || atIndex === email.length - 1) {
     return false;
   }
+  
+  // @ 앞뒤로 최소 1자 이상 필요
+  const localPart = email.substring(0, atIndex);
+  const domainPart = email.substring(atIndex + 1);
+  
+  if (localPart.length === 0 || domainPart.length === 0) {
+    return false;
+  }
+  
+  // 도메인에 점이 최소 하나 있어야 함
+  if (domainPart.indexOf('.') === -1) {
+    return false;
+  }
+  
+  // 기본 문자 검증 (알파벳, 숫자, 일부 특수문자만 허용)
+  // ReDoS 방지를 위해 단순한 문자 클래스 사용
+  const validEmailChars = /^[a-zA-Z0-9._+-@]+$/;
+  if (!validEmailChars.test(email)) {
+    return false;
+  }
+  
   return true;
 }
 

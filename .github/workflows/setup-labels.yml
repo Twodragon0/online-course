@@ -9,6 +9,9 @@ jobs:
   setup-labels:
     name: Setup Repository Labels
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     
     steps:
       - name: Checkout

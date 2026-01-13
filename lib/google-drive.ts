@@ -105,7 +105,11 @@ export async function getWeekFolderId(batch: string, week: number): Promise<stri
     const files = response.data.files || [];
     return files.length > 0 ? files[0].id || null : null;
   } catch (error) {
-    console.error(`Error getting week folder for ${batch} ${week}주차:`, error);
+    // Format string 공격 방지: 에러 메시지 sanitization
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const sanitizedMessage = errorMessage.replace(/[{}%]/g, '').substring(0, 200);
+    // 안전한 로깅: 변수는 별도 인자로 전달
+    console.error('Error getting week folder:', batch, week, sanitizedMessage);
     return null;
   }
 }
@@ -144,7 +148,10 @@ export async function getVideosInFolder(folderId: string): Promise<DriveFile[]> 
 
     return (response.data.files || []) as DriveFile[];
   } catch (error) {
-    console.error(`Error getting videos in folder ${folderId}:`, error);
+    // Format string 공격 방지: 에러 메시지 sanitization
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const sanitizedMessage = errorMessage.replace(/[{}%]/g, '').substring(0, 200);
+    console.error(`Error getting videos in folder:`, sanitizedMessage);
     return [];
   }
 }

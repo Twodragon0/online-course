@@ -22,6 +22,10 @@ jobs:
   update-status:
     name: Update Status Based on Labels
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
     
     steps:
       - name: Check labels

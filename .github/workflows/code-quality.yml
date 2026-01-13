@@ -10,6 +10,9 @@ jobs:
   lint:
     name: Lint and Format Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     
     steps:
       - name: Checkout code
@@ -34,6 +37,9 @@ jobs:
   build-size:
     name: Build Size Analysis
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     
     steps:
       - name: Checkout code
