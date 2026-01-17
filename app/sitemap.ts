@@ -1,7 +1,22 @@
 import { MetadataRoute } from 'next';
+import { prisma } from '@/lib/prisma'; // Import prisma client
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = 'https://edu.2twodragon.com';
+
+    const courses = await prisma.course.findMany({
+        select: {
+            id: true,
+            updatedAt: true,
+        },
+    });
+
+    const courseEntries: MetadataRoute.Sitemap = courses.map((course) => ({
+        url: `${baseUrl}/courses/${course.id}`,
+        lastModified: course.updatedAt,
+        changeFrequency: 'weekly',
+        priority: 0.9,
+    }));
 
     return [
         {
@@ -52,5 +67,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: 'monthly',
             priority: 0.5,
         },
+        ...courseEntries, // Add dynamic course entries
     ];
 }
