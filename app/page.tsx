@@ -1,39 +1,40 @@
 'use client';
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Sparkles, Shield, Zap, Users, Award, Headphones } from "lucide-react";
+import { ArrowRight, CheckCircle2, Sparkles, Shield, Zap, Users, Award, Headphones, FileVideo, Upload, Mic, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
+import { Suspense } from "react";
 
 const features = [
-  { 
-    icon: Sparkles, 
-    title: "AI-powered learning assistance",
-    description: "Advanced AI chat support for instant help"
+  {
+    icon: Sparkles,
+    title: "AI-powered content enhancement",
+    description: "Transform blog posts into engaging courses with AI assistance"
   },
-  { 
-    icon: Shield, 
-    title: "DevSecOps focused",
-    description: "Security-first approach to learning"
+  {
+    icon: FileVideo,
+    title: "Multi-format content",
+    description: "Video, audio, and interactive content support"
   },
-  { 
-    icon: Zap, 
-    title: "HD video content",
-    description: "High-quality video lessons"
+  {
+    icon: Zap,
+    title: "Blog-to-course conversion",
+    description: "Seamlessly convert tech.2twodragon.com posts into courses"
   },
-  { 
-    icon: Users, 
-    title: "Expert instructors",
-    description: "Learn from industry professionals"
+  {
+    icon: Users,
+    title: "Expert platform",
+    description: "Professional course creation and management tools"
   },
-  { 
-    icon: Award, 
-    title: "Certificate of completion",
-    description: "Earn certificates for your achievements"
+  {
+    icon: Shield,
+    title: "Secure & scalable",
+    description: "Enterprise-grade security for your content"
   },
-  { 
-    icon: Headphones, 
-    title: "24/7 support",
-    description: "Round-the-clock assistance"
+  {
+    icon: Award,
+    title: "Monetize your knowledge",
+    description: "Turn blog content into revenue streams"
   },
 ];
 
@@ -74,55 +75,56 @@ export default function Home() {
           animate="visible"
           variants={containerVariants}
         >
-          <motion.div 
-            variants={itemVariants}
-            className="inline-flex items-center rounded-full border bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 px-4 py-1.5 text-sm font-medium backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow"
-          >
-            <Sparkles className="h-4 w-4 mr-2 text-primary animate-pulse" />
-            <span className="text-primary font-semibold">New Feature</span>
-            <span className="mx-2 text-muted-foreground">|</span>
-            <span>AI Chat Support</span>
-          </motion.div>
-          <motion.h1 
-            variants={itemVariants}
-            className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight leading-tight"
-          >
-            <span className="gradient-text">
-              Transform Your Career
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-              with DevSecOps
-            </span>
-          </motion.h1>
-          <motion.p 
-            variants={itemVariants}
-            className="text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed"
-          >
-            Master cloud security and DevSecOps with our comprehensive online courses. 
-            Learn from industry experts and build real-world skills with AI-powered assistance.
-          </motion.p>
-          <motion.div 
-            variants={itemVariants}
-            className="flex flex-col sm:flex-row gap-4"
-          >
-            <Link 
-              href="/courses" 
-              className="group relative inline-flex items-center justify-center rounded-lg bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 overflow-hidden"
+            <motion.div
+              variants={itemVariants}
+              className="inline-flex items-center rounded-full border bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 px-4 py-1.5 text-sm font-medium backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow"
             >
-              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-              <span className="relative flex items-center gap-2">
-                Get Started
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </span>
-            </Link>
-            <Link 
-              href="/pricing"
-              className="group inline-flex items-center justify-center rounded-lg border-2 border-input bg-background px-8 py-4 text-base font-semibold shadow-sm transition-all hover:bg-accent hover:text-accent-foreground hover:border-primary/50 hover:scale-105 hover:shadow-md"
-            >
-              View Pricing
-            </Link>
-          </motion.div>
+              <BookOpen className="h-4 w-4 mr-2 text-primary animate-pulse" />
+              <span className="text-primary font-semibold">Blog to Course</span>
+              <span className="mx-2 text-muted-foreground">|</span>
+              <span>AI-Powered Conversion</span>
+            </motion.div>
+           <motion.h1
+             variants={itemVariants}
+             className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight leading-tight"
+           >
+             <span className="gradient-text">
+               Transform Your Blog Posts
+             </span>
+             <br />
+             <span className="bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+               Into Engaging Courses
+             </span>
+           </motion.h1>
+           <motion.p
+             variants={itemVariants}
+             className="text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed"
+           >
+             Convert your tech.2twodragon.com blog content into interactive online courses.
+             Add videos, audio, and multimedia to create compelling learning experiences that engage and monetize your audience.
+           </motion.p>
+           <motion.div
+             variants={itemVariants}
+             className="flex flex-col sm:flex-row gap-4"
+           >
+             <Link
+               href="/courses"
+               className="group relative inline-flex items-center justify-center rounded-lg bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 overflow-hidden"
+             >
+               <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+               <span className="relative flex items-center gap-2">
+                 <Upload className="h-5 w-5" />
+                 Create Your Course
+                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+               </span>
+             </Link>
+             <Link
+               href="/pricing"
+               className="group inline-flex items-center justify-center rounded-lg border-2 border-input bg-background px-8 py-4 text-base font-semibold shadow-sm transition-all hover:bg-accent hover:text-accent-foreground hover:border-primary/50 hover:scale-105 hover:shadow-md"
+             >
+               View Pricing
+             </Link>
+           </motion.div>
         </motion.div>
         <motion.div 
           className="flex-1 relative w-full max-w-2xl z-10"
@@ -133,29 +135,29 @@ export default function Home() {
           <div className="relative aspect-video bg-gradient-to-br from-primary/20 via-primary/10 to-background rounded-2xl shadow-2xl overflow-hidden border border-primary/20 group">
             <div className="absolute inset-0 bg-grid-white/10 [mask-image:radial-gradient(white,transparent_70%)]" />
             <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
-            <div className="relative h-full flex items-center justify-center p-8">
-              <div className="text-center space-y-4">
-                <motion.div 
-                  className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/20 backdrop-blur-sm mb-4 border-2 border-primary/30"
-                  animate={{ 
-                    boxShadow: [
-                      "0 0 0 0 rgba(59, 130, 246, 0.4)",
-                      "0 0 0 10px rgba(59, 130, 246, 0)",
-                      "0 0 0 0 rgba(59, 130, 246, 0)"
-                    ]
-                  }}
-                  transition={{ 
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  <Shield className="h-10 w-10 text-primary" />
-                </motion.div>
-                <h3 className="text-2xl font-bold text-foreground">DevSecOps Mastery</h3>
-                <p className="text-muted-foreground">Learn cloud security the right way</p>
-              </div>
-            </div>
+             <div className="relative h-full flex items-center justify-center p-8">
+               <div className="text-center space-y-4">
+                 <motion.div
+                   className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/20 backdrop-blur-sm mb-4 border-2 border-primary/30"
+                   animate={{
+                     boxShadow: [
+                       "0 0 0 0 rgba(59, 130, 246, 0.4)",
+                       "0 0 0 10px rgba(59, 130, 246, 0)",
+                       "0 0 0 0 rgba(59, 130, 246, 0)"
+                     ]
+                   }}
+                   transition={{
+                     duration: 2,
+                     repeat: Infinity,
+                     ease: "easeInOut"
+                   }}
+                 >
+                   <FileVideo className="h-10 w-10 text-primary" />
+                 </motion.div>
+                 <h3 className="text-2xl font-bold text-foreground">Content Transformation</h3>
+                 <p className="text-muted-foreground">Blog posts to interactive courses</p>
+               </div>
+             </div>
           </div>
         </motion.div>
       </section>
@@ -171,10 +173,10 @@ export default function Home() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight gradient-text">
-              Everything You Need to Succeed
+              Transform Content, Create Courses
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Our platform provides all the tools and features you need to master DevSecOps and cloud security.
+              Everything you need to convert blog posts into engaging online courses with video, audio, and interactive content.
             </p>
           </motion.div>
           <motion.div 
@@ -212,6 +214,101 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Workflow Section */}
+      <Suspense fallback={
+        <section className="border-t bg-gradient-to-b from-background to-muted/30 relative overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-24">
+            <div className="text-center space-y-4 mb-16">
+              <div className="h-12 bg-muted/50 rounded-lg animate-pulse max-w-md mx-auto"></div>
+              <div className="h-6 bg-muted/30 rounded animate-pulse max-w-lg mx-auto"></div>
+            </div>
+            <div className="grid md:grid-cols-4 gap-8">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-muted/50 animate-pulse"></div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted/30 rounded animate-pulse"></div>
+                    <div className="h-6 bg-muted/30 rounded animate-pulse"></div>
+                    <div className="h-4 bg-muted/30 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      }>
+        <section className="border-t bg-gradient-to-b from-background to-muted/30 relative overflow-hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-24">
+            <motion.div
+              className="text-center space-y-4 mb-16"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight gradient-text">
+                From Blog to Course in Minutes
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Seamlessly transform your tech.2twodragon.com content into professional online courses.
+              </p>
+            </motion.div>
+
+            <div className="grid md:grid-cols-4 gap-8">
+              {[
+                {
+                  step: "01",
+                  title: "Import Blog Post",
+                  description: "Connect your tech.2twodragon.com content",
+                  icon: "📝"
+                },
+                {
+                  step: "02",
+                  title: "Add Rich Media",
+                  description: "Upload videos, audio, and interactive elements",
+                  icon: "🎥"
+                },
+                {
+                  step: "03",
+                  title: "Enhance with AI",
+                  description: "AI-powered content optimization and summaries",
+                  icon: "🤖"
+                },
+                {
+                  step: "04",
+                  title: "Publish & Monetize",
+                  description: "Launch your course and start earning",
+                  icon: "🚀"
+                }
+              ].map((step, i) => (
+                <motion.div
+                  key={i}
+                  className="text-center space-y-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: i * 0.1 }}
+                >
+                  <div className="relative">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center text-2xl mb-4 border-2 border-primary/20">
+                      {step.icon}
+                    </div>
+                    {i < 3 && (
+                      <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-gradient-to-r from-primary/50 to-primary/50 transform -translate-x-8" />
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-semibold text-primary">{step.step}</div>
+                    <h3 className="font-semibold text-lg">{step.title}</h3>
+                    <p className="text-sm text-muted-foreground">{step.description}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </Suspense>
+
       {/* CTA Section */}
       <section className="border-t bg-gradient-to-b from-muted/30 to-background relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5" />
@@ -224,27 +321,28 @@ export default function Home() {
             className="space-y-6"
           >
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight gradient-text">
-              Ready to Get Started?
+              Ready to Transform Your Content?
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Join thousands of professionals who are already mastering DevSecOps and cloud security with our platform.
+              Join content creators who are turning blog posts into profitable online courses with our professional platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link 
+              <Link
                 href="/register"
                 className="group relative inline-flex items-center justify-center rounded-lg bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 hover:scale-105 overflow-hidden"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
                 <span className="relative flex items-center gap-2">
-                  Create Your Account
+                  <Mic className="h-5 w-5" />
+                  Start Creating
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </span>
               </Link>
-              <Link 
+              <Link
                 href="/courses"
                 className="inline-flex items-center justify-center rounded-lg border-2 border-input bg-background px-8 py-4 text-base font-semibold shadow-sm transition-all hover:bg-accent hover:text-accent-foreground hover:border-primary/50 hover:scale-105"
               >
-                Browse Courses
+                Explore Examples
               </Link>
             </div>
           </motion.div>

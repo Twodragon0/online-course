@@ -53,6 +53,12 @@
 - 임포트 형식: `import { IconName } from "lucide-react"`
 - 예시: `import { Search, Menu, Play } from "lucide-react"`
 
+### 개발 도구
+- **oh-my-opencode**: 개발 도구 설치 (선택사항)
+  - 설치: `npm run setup:oh-my-opencode`
+  - 또는: `./scripts/setup-oh-my-opencode.sh`
+  - Cursor IDE와 터미널에서 모두 사용 가능
+
 ---
 
 ## 프로젝트 구조

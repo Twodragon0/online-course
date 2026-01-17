@@ -23,12 +23,12 @@ const ALLOWED_DOMAINS = [
 function isSafeUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    
+
     // 프로토콜 검증 (http, https만 허용)
     if (!['http:', 'https:'].includes(parsed.protocol)) {
       return false;
     }
-    
+
     // 내부 네트워크 접근 방지
     const hostname = parsed.hostname.toLowerCase();
     if (
@@ -61,12 +61,12 @@ function isSafeUrl(url: string): boolean {
         return false;
       }
     }
-    
+
     // 허용된 도메인 확인
-    const isAllowed = ALLOWED_DOMAINS.some(domain => 
+    const isAllowed = ALLOWED_DOMAINS.some(domain =>
       hostname === domain || hostname.endsWith(`.${domain}`)
     );
-    
+
     return isAllowed;
   } catch {
     return false;
@@ -78,12 +78,12 @@ function isSafeUrl(url: string): boolean {
  */
 function validateRedirectUrl(url: string | null): string | null {
   if (!url) return null;
-  
+
   // 상대 경로는 항상 안전
   if (url.startsWith('/')) {
     return url;
   }
-  
+
   // 절대 URL은 검증 필요
   if (url.startsWith('http://') || url.startsWith('https://')) {
     if (isSafeUrl(url)) {
@@ -92,7 +92,7 @@ function validateRedirectUrl(url: string | null): string | null {
     // 안전하지 않은 URL은 홈으로 리다이렉트
     return '/';
   }
-  
+
   // 기타 프로토콜은 차단
   return null;
 }
@@ -101,10 +101,10 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
   // SSRF 방지: 리다이렉트 URL 검증
-  const redirectUrl = request.nextUrl.searchParams.get('redirect') || 
-                      request.nextUrl.searchParams.get('callbackUrl') ||
-                      request.headers.get('x-redirect-url');
-  
+  const redirectUrl = request.nextUrl.searchParams.get('redirect') ||
+    request.nextUrl.searchParams.get('callbackUrl') ||
+    request.headers.get('x-redirect-url');
+
   if (redirectUrl) {
     const safeRedirect = validateRedirectUrl(redirectUrl);
     if (safeRedirect && safeRedirect !== redirectUrl) {
@@ -136,7 +136,7 @@ export function middleware(request: NextRequest) {
           return origin === allowed;
         }
       });
-      
+
       if (isAllowedOrigin) {
         response.headers.set('Access-Control-Allow-Origin', origin);
         response.headers.set('Access-Control-Allow-Credentials', 'true');
@@ -157,12 +157,12 @@ export function middleware(request: NextRequest) {
   // Content Security Policy
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https: blob:",
-    "font-src 'self' data:",
-    "connect-src 'self' https://api.deepseek.com https://api.openai.com https://api.stripe.com",
-    "frame-src https://js.stripe.com https://hooks.stripe.com",
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com *.googletagmanager.com *.google-analytics.com",
+    "style-src 'self' 'unsafe-inline' *.googleapis.com *.gstatic.com",
+    "img-src 'self' data: https: blob: *.googleusercontent.com *.googletagmanager.com *.google-analytics.com",
+    "font-src 'self' data: *.gstatic.com",
+    "connect-src 'self' https://api.deepseek.com https://api.openai.com https://api.stripe.com *.googleapis.com *.google.com *.youtube.com *.vimeo.com",
+    "frame-src https://js.stripe.com https://hooks.stripe.com *.youtube.com *.vimeo.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

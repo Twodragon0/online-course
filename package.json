@@ -13,7 +13,8 @@
     "db:seed": "ts-node prisma/seed.ts",
     "monitor": "./scripts/monitor-logs.sh",
     "check:github": "./scripts/check-github-actions.sh",
-    "check:vercel": "./scripts/check-vercel-logs.sh"
+    "check:vercel": "./scripts/check-vercel-logs.sh",
+    "setup:oh-my-opencode": "bash scripts/setup-oh-my-opencode.sh"
   },
   "engines": {
     "node": ">=18.17.0 <23.0.0"

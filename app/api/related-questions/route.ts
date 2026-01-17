@@ -194,9 +194,9 @@ export async function POST(req: Request) {
       - 기존 질문과 중복되지 않도록 주의`;
 
       try {
-        // API 호출 타임아웃 설정 (20초)
+        // API 호출 타임아웃 설정 (15초 - 비용 최적화)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const deepseekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',

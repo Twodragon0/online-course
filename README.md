@@ -51,7 +51,12 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 npx prisma migrate dev
 ```
 
-5. Start the development server:
+5. (Optional) Install oh-my-opencode for enhanced development tools:
+```bash
+npm run setup:oh-my-opencode
+```
+
+6. Start the development server:
 ```bash
 npm run dev
 ```

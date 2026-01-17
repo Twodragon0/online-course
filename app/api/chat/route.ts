@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { prisma } from '@/lib/prisma';
+import { prisma, isPrismaAvailable } from '@/lib/prisma';
 import {
   isValidMessage,
   isValidCategory,
@@ -21,10 +21,10 @@ interface ChatLog {
 }
 
 async function findRelevantResponses(message: string): Promise<ChatLog[]> {
-  if (!prisma) {
+  if (!isPrismaAvailable()) {
     return [];
   }
-  
+
   // SQL Injection 방지를 위해 Prisma의 파라미터화된 쿼리 사용
   const logs = await prisma.chatLog.findMany({
     where: {
@@ -47,24 +47,24 @@ export async function POST(request: Request) {
     // 세션 확인 및 구독 상태 가져오기
     const session = await getServerSession();
     const isPro = session?.user?.subscriptionStatus === 'active';
-    
+
     // Rate limiting - Pro는 더 높은 제한, Basic은 낮은 제한
     const clientIp = getClientIp(request);
-    const rateLimitConfig = isPro 
+    const rateLimitConfig = isPro
       ? { maxRequests: 100, windowMs: 60000 } // Pro: 1분에 100회
       : { maxRequests: 10, windowMs: 60000 }; // Basic: 1분에 10회
-    
+
     const rateLimit = await checkRateLimit(
-      `chat:${session?.user?.email || clientIp}`, 
-      rateLimitConfig.maxRequests, 
+      `chat:${session?.user?.email || clientIp}`,
+      rateLimitConfig.maxRequests,
       rateLimitConfig.windowMs
     );
-    
+
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { 
-          error: isPro 
-            ? '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' 
+        {
+          error: isPro
+            ? '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'
             : 'Basic 플랜에서는 요청 횟수가 제한됩니다. Pro 플랜으로 업그레이드하면 더 많은 요청을 사용할 수 있습니다.',
           upgradeRequired: !isPro
         },
@@ -114,8 +114,8 @@ export async function POST(request: Request) {
     const message = sanitizeInput(rawMessage);
 
     // 카테고리 검증
-    const category = rawCategory && isValidCategory(rawCategory) 
-      ? rawCategory.toLowerCase() 
+    const category = rawCategory && isValidCategory(rawCategory)
+      ? rawCategory.toLowerCase()
       : 'general';
 
     // 세션 ID 검증 및 sanitization
@@ -126,8 +126,7 @@ export async function POST(request: Request) {
     // 관련 이전 대화 검색 (Prisma 사용 가능한 경우만)
     let contextMessages: Array<{ role: "assistant" | "user" | "system"; content: string }> = [];
     try {
-      const dbUrl = process.env.DATABASE_URL;
-      if (dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql+pooler://'))) {
+      if (isPrismaAvailable()) {
         const relevantResponses = await findRelevantResponses(message);
         contextMessages = relevantResponses
           .filter((log: ChatLog) => log.response !== null)
@@ -144,7 +143,7 @@ export async function POST(request: Request) {
     // AI 서비스 선택 (비용 최적화: DeepSeek 우선, 없으면 Gemini)
     const useDeepSeek = process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.startsWith('sk-');
     const useGemini = isGeminiConfigured();
-    
+
     if (!useDeepSeek && !useGemini) {
       console.error('[Chat API] No AI service configured (DeepSeek or Gemini)');
       return NextResponse.json(
@@ -192,193 +191,192 @@ export async function POST(request: Request) {
 
         console.log('[Chat API] Using DeepSeek API (primary)');
 
-        // API 호출 타임아웃 설정 (45초로 증가 - 더 긴 답변을 위해)
+        // API 호출 타임아웃 설정 (25초 - 비용 최적화)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
 
         try {
-      const requestBody = {
-        model: "deepseek-chat",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          ...contextMessages,
-          {
-            role: "user",
-            content: message
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 2500, // 더 긴 답변을 위해 증가
-        stream: false // 현재는 비스트리밍 모드 사용 (향후 스트리밍 지원 예정)
-      };
+          const requestBody = {
+            model: "deepseek-chat",
+            messages: [
+              {
+                role: "system",
+                content: systemPrompt
+              },
+              ...contextMessages,
+              {
+                role: "user",
+                content: message
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 2500, // 더 긴 답변을 위해 증가
+            stream: false // 현재는 비스트리밍 모드 사용 (향후 스트리밍 지원 예정)
+          };
 
-      console.log('[Chat API] Calling DeepSeek API with message length:', message.length);
+          console.log('[Chat API] Calling DeepSeek API with message length:', message.length);
 
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        let errorText = 'Unknown error';
-        try {
-          errorText = await response.text();
-          const errorJson = JSON.parse(errorText);
-          console.error('[Chat API] DeepSeek API error:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorJson
-          });
-        } catch (parseError) {
-          console.error('[Chat API] DeepSeek API error (non-JSON):', {
-            status: response.status,
-            statusText: response.statusText,
-            errorText
-          });
-        }
-        
-        // 더 구체적인 에러 메시지 제공
-        if (response.status === 401) {
-          console.error('[Chat API] DeepSeek API authentication failed - check API key');
-          return NextResponse.json(
-            { error: 'API 인증에 실패했습니다. 관리자에게 문의해주세요.' },
-            { status: 502 }
-          );
-        } else if (response.status === 429) {
-          // Rate limit 오류는 재시도 가능하도록 안내
-          const retryAfter = response.headers.get('Retry-After') || '60';
-          return NextResponse.json(
-            { 
-              error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
-              retryAfter: parseInt(retryAfter)
+          const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
             },
-            { 
-              status: 429,
-              headers: {
-                'Retry-After': retryAfter
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            let errorText = 'Unknown error';
+            try {
+              errorText = await response.text();
+              const errorJson = JSON.parse(errorText);
+              console.error('[Chat API] DeepSeek API error:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorJson
+              });
+            } catch (parseError) {
+              console.error('[Chat API] DeepSeek API error (non-JSON):', {
+                status: response.status,
+                statusText: response.statusText,
+                errorText
+              });
+            }
+
+            // 더 구체적인 에러 메시지 제공
+            if (response.status === 401) {
+              console.error('[Chat API] DeepSeek API authentication failed - check API key');
+              return NextResponse.json(
+                { error: 'API 인증에 실패했습니다. 관리자에게 문의해주세요.' },
+                { status: 502 }
+              );
+            } else if (response.status === 429) {
+              // Rate limit 오류는 재시도 가능하도록 안내
+              const retryAfter = response.headers.get('Retry-After') || '60';
+              return NextResponse.json(
+                {
+                  error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+                  retryAfter: parseInt(retryAfter)
+                },
+                {
+                  status: 429,
+                  headers: {
+                    'Retry-After': retryAfter
+                  }
+                }
+              );
+            } else if (response.status >= 500) {
+              // 서버 오류는 재시도 가능
+              return NextResponse.json(
+                { error: 'AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.' },
+                { status: 502 }
+              );
+            }
+
+            return NextResponse.json(
+              { error: 'AI 응답 생성에 실패했습니다.' },
+              { status: 502 }
+            );
+          }
+
+          // 스트리밍이 아닌 경우에만 JSON 파싱
+          let data;
+          try {
+            const responseText = await response.text();
+            if (!responseText || responseText.trim().length === 0) {
+              throw new Error('Empty response from DeepSeek API');
+            }
+            data = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('[Chat API] Failed to parse DeepSeek API response:', parseError);
+            return NextResponse.json(
+              { error: 'AI 응답을 처리하는 중 오류가 발생했습니다.' },
+              { status: 502 }
+            );
+          }
+
+          // 응답 구조 검증
+          if (!data || typeof data !== 'object') {
+            console.error('[Chat API] Invalid response structure:', data);
+            return NextResponse.json(
+              { error: 'AI 응답 형식이 올바르지 않습니다.' },
+              { status: 502 }
+            );
+          }
+
+          if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+            console.error('[Chat API] No choices in response:', data);
+            return NextResponse.json(
+              { error: 'AI 응답을 받을 수 없습니다.' },
+              { status: 502 }
+            );
+          }
+
+          const firstChoice = data.choices[0];
+          if (!firstChoice || !firstChoice.message || !firstChoice.message.content) {
+            console.error('[Chat API] Invalid choice structure:', firstChoice);
+            return NextResponse.json(
+              { error: 'AI 응답을 받을 수 없습니다.' },
+              { status: 502 }
+            );
+          }
+
+          const aiResponse = firstChoice.message.content;
+
+          if (!aiResponse || typeof aiResponse !== 'string' || aiResponse.trim().length === 0) {
+            console.error('[Chat API] Empty or invalid response content');
+            return NextResponse.json(
+              { error: 'AI 응답이 비어있습니다.' },
+              { status: 502 }
+            );
+          }
+
+          console.log('[Chat API] Successfully received response, length:', aiResponse.length);
+
+          // AI 응답도 sanitization (XSS 방지)
+          const sanitizedResponse = sanitizeInput(aiResponse);
+
+          // 응답 저장 (Prisma 사용 가능한 경우만)
+          let logId: string | null = null;
+          try {
+            if (isPrismaAvailable()) {
+              try {
+                const chatLog = await prisma.chatLog.create({
+                  data: {
+                    sessionId,
+                    message,
+                    response: sanitizedResponse,
+                    category,
+                  }
+                });
+                logId = chatLog.id;
+              } catch (dbError) {
+                // 데이터베이스 오류는 로깅만 하고 응답은 반환
+                console.warn('[Chat API] Failed to save chat log:', dbError instanceof Error ? dbError.message : 'Unknown error');
               }
             }
-          );
-        } else if (response.status >= 500) {
-          // 서버 오류는 재시도 가능
-          return NextResponse.json(
-            { error: 'AI 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.' },
-            { status: 502 }
-          );
-        }
-        
-        return NextResponse.json(
-          { error: 'AI 응답 생성에 실패했습니다.' },
-          { status: 502 }
-        );
-      }
-
-      // 스트리밍이 아닌 경우에만 JSON 파싱
-      let data;
-      try {
-        const responseText = await response.text();
-        if (!responseText || responseText.trim().length === 0) {
-          throw new Error('Empty response from DeepSeek API');
-        }
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('[Chat API] Failed to parse DeepSeek API response:', parseError);
-        return NextResponse.json(
-          { error: 'AI 응답을 처리하는 중 오류가 발생했습니다.' },
-          { status: 502 }
-        );
-      }
-
-      // 응답 구조 검증
-      if (!data || typeof data !== 'object') {
-        console.error('[Chat API] Invalid response structure:', data);
-        return NextResponse.json(
-          { error: 'AI 응답 형식이 올바르지 않습니다.' },
-          { status: 502 }
-        );
-      }
-
-      if (!data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
-        console.error('[Chat API] No choices in response:', data);
-        return NextResponse.json(
-          { error: 'AI 응답을 받을 수 없습니다.' },
-          { status: 502 }
-        );
-      }
-
-      const firstChoice = data.choices[0];
-      if (!firstChoice || !firstChoice.message || !firstChoice.message.content) {
-        console.error('[Chat API] Invalid choice structure:', firstChoice);
-        return NextResponse.json(
-          { error: 'AI 응답을 받을 수 없습니다.' },
-          { status: 502 }
-        );
-      }
-
-      const aiResponse = firstChoice.message.content;
-
-      if (!aiResponse || typeof aiResponse !== 'string' || aiResponse.trim().length === 0) {
-        console.error('[Chat API] Empty or invalid response content');
-        return NextResponse.json(
-          { error: 'AI 응답이 비어있습니다.' },
-          { status: 502 }
-        );
-      }
-
-      console.log('[Chat API] Successfully received response, length:', aiResponse.length);
-
-      // AI 응답도 sanitization (XSS 방지)
-      const sanitizedResponse = sanitizeInput(aiResponse);
-
-      // 응답 저장 (Prisma 사용 가능한 경우만)
-      let logId: string | null = null;
-      try {
-        const dbUrl = process.env.DATABASE_URL;
-        if (dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql+pooler://'))) {
-          try {
-            const chatLog = await prisma.chatLog.create({
-              data: {
-                sessionId,
-                message,
-                response: sanitizedResponse,
-                category,
-              }
-            });
-            logId = chatLog.id;
-          } catch (dbError) {
-            // 데이터베이스 오류는 로깅만 하고 응답은 반환
-            console.warn('[Chat API] Failed to save chat log:', dbError instanceof Error ? dbError.message : 'Unknown error');
+          } catch (prismaError) {
+            // Prisma 초기화 에러는 무시
+            console.warn('[Chat API] Prisma not available for logging');
           }
-        }
-      } catch (prismaError) {
-        // Prisma 초기화 에러는 무시
-        console.warn('[Chat API] Prisma not available for logging');
-      }
 
-      return NextResponse.json({
-        response: sanitizedResponse,
-        logId,
-        provider: 'deepseek'
-      }, {
-        headers: {
-          'X-RateLimit-Limit': rateLimitConfig.maxRequests.toString(),
-          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-          'X-Subscription-Status': isPro ? 'pro' : 'basic',
-        },
-      });
+          return NextResponse.json({
+            response: sanitizedResponse,
+            logId,
+            provider: 'deepseek'
+          }, {
+            headers: {
+              'X-RateLimit-Limit': rateLimitConfig.maxRequests.toString(),
+              'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+              'X-Subscription-Status': isPro ? 'pro' : 'basic',
+            },
+          });
         } catch (fetchError) {
           clearTimeout(timeoutId);
-          
+
           if (fetchError instanceof Error && fetchError.name === 'AbortError') {
             console.error('[Chat API] Request timeout');
             throw new Error('Request timeout');
@@ -394,7 +392,7 @@ export async function POST(request: Request) {
             name: fetchError instanceof Error ? fetchError.name : 'Unknown',
             message: fetchError instanceof Error ? fetchError.message : 'Unknown error',
           });
-          
+
           throw fetchError;
         }
       } catch (deepseekError) {
@@ -444,8 +442,7 @@ export async function POST(request: Request) {
         // 응답 저장 (Prisma 사용 가능한 경우만)
         let logId: string | null = null;
         try {
-          const dbUrl = process.env.DATABASE_URL;
-          if (dbUrl && (dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql+pooler://'))) {
+          if (isPrismaAvailable()) {
             try {
               const chatLog = await prisma.chatLog.create({
                 data: {
@@ -523,7 +520,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { 
+      {
         error: userMessage,
         // 개발 환경에서만 상세 에러 정보 제공
         ...(process.env.NODE_ENV === 'development' && {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, isPrismaAvailable } from '@/lib/prisma';
 import { checkRateLimit, getClientIp, getCached } from '@/lib/security';
 
 /**
@@ -36,10 +36,8 @@ export async function GET(request: Request) {
     }
 
     // DATABASE_URL 검증
-    const dbUrl = process.env.DATABASE_URL;
-    if (!dbUrl || (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://') && !dbUrl.startsWith('postgresql+pooler://'))) {
-      console.error('[Courses API] DATABASE_URL is not configured or invalid');
-      console.error('[Courses API] DATABASE_URL format:', dbUrl ? `${dbUrl.substring(0, 20)}...` : 'not set');
+    if (!isPrismaAvailable()) {
+      console.error('[Courses API] Prisma is not available');
       return NextResponse.json(
         { error: '데이터베이스가 설정되지 않았습니다. 관리자에게 문의해주세요.' },
         { status: 503 }
@@ -47,7 +45,7 @@ export async function GET(request: Request) {
     }
 
     // Prisma 사용 가능 여부 확인 (에러 처리)
-    
+
     // Redis 캐싱 적용 (5분 TTL)
     const courses = await getCached(
       'courses:list',

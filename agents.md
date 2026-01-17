@@ -1,6 +1,34 @@
-# Agents
+# AGENTS.md - Online Course Platform Development Guide
 
 이 문서는 온라인 코스 플랫폼 프로젝트의 구조, 개발 가이드라인, 그리고 AI 코딩 에이전트가 프로젝트를 효과적으로 이해하고 작업할 수 있도록 필요한 정보를 제공합니다.
+
+## 🚀 Quick Start for Agents
+
+### Essential Commands
+```bash
+# Development
+npm run dev              # Start dev server
+npm run build           # Build for production
+npm run start           # Start production server
+
+# Testing & Quality
+npm run type-check      # TypeScript check
+npm run check-build     # Full build validation
+npm run db:seed         # Seed database
+
+# Database
+npx prisma generate     # Generate Prisma client
+npx prisma migrate dev  # Run migrations
+npx prisma studio       # Open Prisma Studio
+```
+
+### Running a Single Test
+```bash
+# This project uses manual testing via build/type checks
+npm run type-check      # TypeScript validation
+npm run check-build     # Build validation
+npx prisma validate     # Schema validation
+```
 
 ## 프로젝트 개요
 
@@ -61,6 +89,31 @@
 - **npm**: 패키지 관리자
 - **PostgreSQL**: 데이터베이스
 - **Redis**: Rate limiting (선택사항)
+- **Bun**: oh-my-opencode 설치용 (선택사항)
+
+### oh-my-opencode 설치
+
+oh-my-opencode는 개발 도구로, Cursor IDE와 터미널에서 모두 사용할 수 있습니다.
+
+#### 방법 1: npm 스크립트 사용 (권장)
+```bash
+npm run setup:oh-my-opencode
+```
+
+#### 방법 2: 직접 실행
+```bash
+./scripts/setup-oh-my-opencode.sh
+```
+
+#### 방법 3: 수동 실행
+```bash
+source ~/.zshrc && bunx oh-my-opencode install
+```
+
+**참고**: 
+- Bun이 설치되어 있어야 합니다: `curl -fsSL https://bun.sh/install | bash`
+- 설치 후 새 터미널을 열거나 `source ~/.zshrc`를 실행하세요
+- Cursor IDE에서는 스크립트 실행 후 자동으로 적용됩니다
 
 ### 환경 변수 설정
 
@@ -128,6 +181,23 @@ npm run vercel-build
 npm run type-check
 ```
 
+### Testing Commands
+```bash
+# Build validation (includes type checking)
+npm run check-build
+
+# TypeScript type checking only
+npm run type-check
+
+# Prisma schema validation
+npx prisma validate
+
+# Database seeding (for testing)
+npm run db:seed
+```
+
+**Note**: This project uses build/type-check validation instead of traditional test suites. All changes must pass `npm run check-build` before deployment.
+
 ## 데이터베이스 관리
 
 ### Prisma 스키마
@@ -162,29 +232,270 @@ ts-node prisma/seed.ts
 
 ## 코드 스타일 및 가이드라인
 
-### 컴포넌트 구조
-- 모든 UI 컴포넌트는 `/components/ui`에 위치
-- 페이지 컴포넌트는 `/app` 디렉토리에 위치
-- 재사용 가능한 컴포넌트는 `/components`에 위치
+### TypeScript Configuration
+- **Strict mode**: Enabled (`"strict": true` in tsconfig.json)
+- **Path mapping**: `@/*` maps to `./*` for clean imports
+- **Target**: ES5 with ESNext libraries
+- **Module resolution**: Bundler (for Next.js App Router)
 
-### ShadCN 컴포넌트 사용
-- 모든 UI 컴포넌트는 ShadCN을 사용해야 합니다
-- 컴포넌트 설치: `npx shadcn@latest add [component-name]`
-- 컴포넌트 경로: `/components/ui`
+### Import/Export Patterns
+```typescript
+// Good: Group and sort imports
+import { useState, useEffect } from 'react';
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { sanitizeInput } from '@/lib/security';
+import { Button } from '@/components/ui/button';
 
-### 아이콘 사용
-- 모든 아이콘은 Lucide React를 사용해야 합니다
-- Import 형식: `import { IconName } from "lucide-react"`
+// Bad: Mixed imports, no grouping
+import { prisma } from '@/lib/prisma';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+```
 
-### TypeScript
-- TypeScript strict mode 활성화
-- 모든 컴포넌트와 함수에 타입 정의 필요
-- `any` 타입 사용 지양
+### Component Structure & Patterns
 
-### 파일 명명 규칙
-- 컴포넌트: PascalCase (예: `VideoPlayer.tsx`)
-- 유틸리티: camelCase (예: `video-utils.ts`)
-- API 라우트: kebab-case (예: `video-summary/route.ts`)
+#### ShadCN UI Components (MANDATORY)
+- **All UI components must use ShadCN**: No custom styling for basic components
+- **Installation**: `npx shadcn@latest add [component-name]`
+- **Location**: `/components/ui/`
+- **Variants**: Use `cva` (class-variance-authority) for variant props
+
+```typescript
+// Example: components/ui/button.tsx
+import { cva, type VariantProps } from "class-variance-authority";
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // ... other variants
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        // ... other sizes
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+);
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+```
+
+#### Icons (MANDATORY)
+- **Library**: Lucide React only
+- **Import pattern**: `import { IconName } from "lucide-react"`
+- **Size**: Controlled via `[&_svg]:size-4` in component styles
+
+#### Utility Functions
+- **Location**: `/lib/utils.ts`
+- **cn function**: Required for merging Tailwind classes
+```typescript
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+```
+
+### API Route Patterns
+
+#### Security-First Approach (MANDATORY)
+```typescript
+// Standard API route structure
+export async function POST(request: Request) {
+  try {
+    // 1. Rate limiting FIRST
+    const clientIp = getClientIp(request);
+    const rateLimit = await checkRateLimit(`api:${clientIp}`, 10, 60000);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
+    // 2. Authentication check
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // 3. Input validation & sanitization
+    const { data } = await request.json();
+    const safeData = sanitizeInput(data);
+
+    // 4. Business logic
+    // ...
+
+    // 5. Proper response
+    return NextResponse.json({ success: true });
+
+  } catch (error) {
+    // Comprehensive error handling
+    console.error('API Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+#### Error Handling Patterns
+- **Never expose internal errors** to clients
+- **Log errors** with appropriate levels
+- **Use proper HTTP status codes**
+- **Include rate limit headers** in responses
+
+### Database & Prisma Patterns
+
+#### Schema Design
+- **Parameterized queries**: Always use Prisma's built-in protection
+- **Relations**: Proper foreign key relationships
+- **Indexes**: Add for frequently queried fields
+- **Constraints**: Use database-level validation
+
+#### Query Patterns
+```typescript
+// Good: Parameterized, with error handling
+const user = await prisma.user.findUnique({
+  where: { email: sanitizedEmail },
+  include: { subscription: true }
+});
+
+// Bad: SQL injection risk (never do this)
+const user = await prisma.$queryRaw`SELECT * FROM User WHERE email = ${email}`;
+```
+
+### File Naming Conventions
+- **Components**: PascalCase (`VideoPlayer.tsx`, `ChatBot.tsx`)
+- **Utilities**: camelCase (`video-utils.ts`, `auth-helpers.ts`)
+- **API Routes**: kebab-case (`video-summary/route.ts`, `create-payment-session/route.ts`)
+- **Types**: PascalCase with `Type` suffix (`UserType.ts`, `ApiResponse.ts`)
+- **Constants**: UPPER_SNAKE_CASE (`API_TIMEOUT`, `MAX_RETRIES`)
+
+### Security Guidelines (MANDATORY)
+
+#### Input Validation & Sanitization
+- **Always validate** user input on server-side
+- **Use `sanitizeInput()`** from `@/lib/security` for all user data
+- **Validate file uploads** and URLs
+- **Check content types** and sizes
+
+#### Rate Limiting
+- **Redis-based** rate limiting preferred
+- **Memory fallback** for Redis unavailability
+- **Different limits** for authenticated vs anonymous users
+- **Proper headers**: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`
+
+#### Authentication & Authorization
+- **NextAuth.js v4** for session management
+- **Google OAuth** primary provider
+- **bcrypt** for password hashing (12 rounds minimum)
+- **Session validation** on every protected route
+
+#### XSS Prevention
+- **Escape HTML** before using `dangerouslySetInnerHTML`
+- **Sanitize AI responses** before displaying
+- **CSP headers** configured in `next.config.js`
+
+### CSS & Styling Patterns
+
+#### Tailwind CSS (MANDATORY)
+- **Design system**: ShadCN color tokens
+- **Dark mode**: Class-based (`dark:` prefixes)
+- **Responsive**: Mobile-first approach
+- **Custom utilities**: Add to `tailwind.config.ts`
+
+#### CSS Variables (ShadCN Pattern)
+```css
+/* globals.css */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --primary: 222.2 47.4% 11.2%;
+  /* ... */
+}
+```
+
+### Performance Patterns
+
+#### Image Optimization
+- **Next.js Image component** for all images
+- **Remote patterns** configured in `next.config.js`
+- **Security headers** on image routes
+
+#### Bundle Optimization
+- **Dynamic imports** for heavy components
+- **Tree shaking** enabled by default
+- **Standalone output** for Docker deployment
+
+### Environment Variables
+- **Validation**: Required env vars checked at build time
+- **Security**: Never commit `.env*` files
+- **Naming**: `NEXT_PUBLIC_` prefix for client-side vars
+- **Types**: Define in `env.d.ts` or similar
+
+### Testing Approach
+- **Build validation**: Primary testing method
+- **Type checking**: `npm run type-check`
+- **Schema validation**: `npx prisma validate`
+- **Manual testing**: Through UI and API endpoints
+
+### Deployment Patterns
+- **Vercel**: Primary deployment platform
+- **Environment separation**: Production, Preview, Development
+- **Build optimization**: Standalone output for containers
+- **Security headers**: Comprehensive CSP and other headers
+
+### Error Boundaries & Monitoring
+- **Client-side**: Use React Error Boundaries
+- **Server-side**: Try-catch in API routes
+- **Logging**: Structured logging with context
+- **Monitoring**: Response times, error rates, rate limit hits
+
+## Cursor Rules Integration
+
+This project includes comprehensive Cursor rules (`.cursorrules`) that MUST be followed:
+
+### OWASP Top 10 (2025) Compliance
+- **A01: Broken Access Control**: Session validation, RBAC implementation
+- **A02: Cryptographic Failures**: bcrypt (12 rounds), HTTPS enforcement
+- **A03: Injection**: Prisma parameterized queries, input sanitization
+- **A04: Insecure Design**: Rate limiting, input validation
+- **A05: Security Misconfiguration**: Security headers, environment validation
+- **A06: Vulnerable Components**: Regular dependency updates
+- **A07: Identification and Authentication**: NextAuth.js, Google OAuth
+- **A08: Software and Data Integrity**: Webhook signature verification
+- **A09: Security Logging and Monitoring**: Comprehensive error logging
+- **A10: Server-Side Request Forgery**: URL whitelisting, SSRF protection
+
+### Security Implementation Requirements
+- **Rate Limiting**: Redis-based with memory fallback
+- **XSS Prevention**: `sanitizeInput()` for all user data
+- **Input Validation**: Server-side validation mandatory
+- **API Security**: Authentication + authorization on all endpoints
+- **Environment Security**: No hardcoded secrets, `.env*` exclusion from git
+
+### Forbidden Practices
+- ❌ API keys hardcoded in source code
+- ❌ `.env` files committed to repository
+- ❌ `eval()`, `new Function()` usage
+- ❌ SQL string concatenation
+- ❌ HTTP usage in production
+- ❌ Sensitive data in logs
+- ❌ `any` type overuse
+- ❌ `dangerouslySetInnerHTML` without escaping
 
 ## API 엔드포인트
 
@@ -410,7 +721,3 @@ npx prisma generate
 ## 라이선스
 
 이 프로젝트는 MIT 라이선스를 따릅니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
-
-
-
