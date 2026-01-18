@@ -198,23 +198,23 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Content Security Policy
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com *.googletagmanager.com *.google-analytics.com",
-    "style-src 'self' 'unsafe-inline' *.googleapis.com *.gstatic.com",
-    "img-src 'self' data: https: blob: *.googleusercontent.com *.googletagmanager.com *.google-analytics.com",
-    "font-src 'self' data: *.gstatic.com",
-    "connect-src 'self' https://api.deepseek.com https://api.openai.com https://api.stripe.com *.googleapis.com *.google.com *.youtube.com *.vimeo.com",
-    "frame-src https://js.stripe.com https://hooks.stripe.com *.youtube.com *.vimeo.com",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "upgrade-insecure-requests",
-  ].join('; ');
+  // Content Security Policy (Temporarily commented out for debugging CSP application)
+  // const csp = [
+  //   "default-src 'self'",
+  //   "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com *.googletagmanager.com *.google-analytics.com",
+  //   "style-src 'self' 'unsafe-inline' *.googleapis.com *.gstatic.com",
+  //   "img-src 'self' data: https: blob: *.googleusercontent.com *.googletagmanager.com *.google-analytics.com",
+  //   "font-src 'self' data: *.gstatic.com",
+  //   "connect-src 'self' https://api.deepseek.com https://api.openai.com https://api.stripe.com *.googleapis.com *.google.com *.youtube.com *.vimeo.com",
+  //   "frame-src https://js.stripe.com https://hooks.stripe.com *.youtube.com *.vimeo.com",
+  //   "object-src 'none'",
+  //   "base-uri 'self'",
+  //   "form-action 'self'",
+  //   "frame-ancestors 'none'",
+  //   "upgrade-insecure-requests",
+  // ].join('; ');
 
-  response.headers.set('Content-Security-Policy', csp);
+  // response.headers.set('Content-Security-Policy', csp);
 
   // Referrer Policy
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

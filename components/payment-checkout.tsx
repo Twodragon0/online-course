@@ -21,9 +21,13 @@ interface StripeWithRedirect extends Stripe {
 }
 
 // Stripe 초기화
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
-);
+const STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+if (!STRIPE_PUBLISHABLE_KEY) {
+  throw new Error("Stripe Publishable Key is missing. Please set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in your environment variables.");
+}
+
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
 interface PaymentCheckoutProps {
   planId: 'basic' | 'pro';
