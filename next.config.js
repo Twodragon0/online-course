@@ -11,6 +11,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.googleapis.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'blob.vercel-storage.com',
+      },
     ],
     // 이미지 최적화 API 취약점 방지를 위한 제한
     minimumCacheTTL: 60,

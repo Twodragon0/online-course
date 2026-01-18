@@ -1,24 +1,38 @@
 // app/api/rss/route.ts
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, isPrismaAvailable } from '@/lib/prisma'; // Import isPrismaAvailable
+
+// Define a type for the course data retrieved for the feed
+interface CourseFeedItem {
+    id: string;
+    title: string;
+    description: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
 
 export async function GET() {
   try {
     const baseUrl = process.env.NEXTAUTH_URL || 'https://edu.2twodragon.com';
 
-    const courses = await prisma.course.findMany({
-      take: 20, // Limit to 20 latest courses
-      orderBy: {
-        createdAt: 'desc',
-      },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    let courses: CourseFeedItem[] = []; // Explicitly type courses
+    if (isPrismaAvailable()) { // Check if Prisma is available
+        courses = await prisma.course.findMany({
+            take: 20, // Limit to 20 latest courses
+            orderBy: {
+                createdAt: 'desc',
+            },
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+    } else {
+        console.warn('Prisma not available during RSS feed generation. Dynamic course entries will be empty.');
+    }
 
     const feedItems = courses.map((course) => `
       <item>

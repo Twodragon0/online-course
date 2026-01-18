@@ -42,8 +42,7 @@ export function Navbar() {
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
-                className="touch-manipulation"
+                 size="icon"
                 aria-label="Open menu"
               >
                 <Menu className="h-6 w-6" />
@@ -62,7 +61,7 @@ export function Navbar() {
                       <SheetClose key={item.name} asChild>
                         <Link
                           href={item.href}
-                          className={`flex items-center w-full px-4 py-3 text-sm sm:text-base font-semibold rounded-lg transition-colors touch-manipulation ${
+                          className={`flex items-center w-full px-4 py-3 text-sm sm:text-base font-semibold rounded-lg transition-colors ${
                             pathname === item.href
                               ? "bg-accent text-primary"
                               : "text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80"
@@ -92,7 +91,7 @@ export function Navbar() {
                         <Button
                           variant="ghost"
                           onClick={() => signOut()}
-                          className="w-full justify-start px-4 py-3 text-sm sm:text-base font-semibold text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80 touch-manipulation"
+                          className="w-full justify-start px-4 py-3 text-sm sm:text-base font-semibold text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80"
                         >
                           Log out
                         </Button>
@@ -104,7 +103,7 @@ export function Navbar() {
                         <Button
                           variant="ghost"
                           onClick={() => signIn("google")}
-                          className="w-full justify-start px-4 py-3 text-sm sm:text-base font-semibold text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80 touch-manipulation"
+                          className="w-full justify-start px-4 py-3 text-sm sm:text-base font-semibold text-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent/80"
                         >
                           Log in
                         </Button>
@@ -112,7 +111,7 @@ export function Navbar() {
                       <SheetClose asChild>
                         <Button
                           asChild
-                          className="w-full px-4 py-3 text-sm sm:text-base font-semibold touch-manipulation"
+                          className="w-full px-4 py-3 text-sm sm:text-base font-semibold"
                         >
                           <Link href="/register">Get Started</Link>
                         </Button>

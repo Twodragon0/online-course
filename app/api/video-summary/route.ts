@@ -3,7 +3,9 @@ import {
   isValidFileId,
   checkRateLimit,
   getClientIp,
+  getCached, // Import getCached
 } from '@/lib/security';
+import { generateChat, isGeminiConfigured } from '@/lib/gemini'; // Assuming AI generation logic is here
 
 type CourseType = 'devsecops' | 'aiSns';
 
@@ -103,16 +105,55 @@ export async function POST(request: Request) {
       });
     }
 
-    // DeepSeek API를 사용한 요약 생성 로직...
-    return NextResponse.json({
-      summary: "생성된 요약 내용...",
-      title: "생성된 제목..."
-    }, {
-      headers: {
-        'X-RateLimit-Limit': '10',
-        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-      },
-    });
+    // Cache key for AI generated summaries
+    const cacheKey = `video-summary:${courseType}:${fileId}`;
+    const cachedSummary = await getCached(cacheKey, async () => {
+        // --- AI Summary Generation Logic ---
+        const useDeepSeek = process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_API_KEY.startsWith('sk-');
+        const useGemini = isGeminiConfigured();
+
+        if (!useDeepSeek && !useGemini) {
+            console.error('[Video Summary API] No AI service configured');
+            return null; // Return null to indicate failure, not throw
+        }
+
+        let aiResponseSummary = "AI가 생성한 요약 내용...";
+        let aiResponseTitle = "AI가 생성한 제목...";
+
+        // Placeholder for actual AI call
+        if (useDeepSeek) {
+            // Example: Call DeepSeek API
+            // const deepseekResult = await callDeepSeekForSummary(fileId, courseType);
+            // aiResponseSummary = deepseekResult.summary;
+            // aiResponseTitle = deepseekResult.title;
+        } else if (useGemini) {
+            // Example: Call Gemini API
+            // const geminiResult = await callGeminiForSummary(fileId, courseType);
+            // aiResponseSummary = geminiResult.summary;
+            // aiResponseTitle = geminiResult.title;
+        }
+
+        return { summary: aiResponseSummary, title: aiResponseTitle };
+    }, 86400); // Cache for 24 hours (can be adjusted)
+
+    if (cachedSummary && cachedSummary.summary && cachedSummary.title) {
+        return NextResponse.json({
+            summary: cachedSummary.summary,
+            title: cachedSummary.title
+        }, {
+            headers: {
+                'X-RateLimit-Limit': '10',
+                'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+                'Cache-Control': 'public, s-maxage=86400', // Cache control header for Vercel
+            },
+        });
+    } else {
+        // Fallback or error if AI generation failed and no cache
+        return NextResponse.json(
+            { error: '비디오 요약 생성에 실패했습니다. AI 서비스가 구성되지 않았거나 응답이 없습니다.' },
+            { status: 500 }
+        );
+    }
 
   } catch (error) {
     console.error('Video summary error:', error instanceof Error ? error.message : 'Unknown error');

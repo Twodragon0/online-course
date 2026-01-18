@@ -1,22 +1,27 @@
 import { MetadataRoute } from 'next';
-import { prisma } from '@/lib/prisma'; // Import prisma client
+import { prisma, isPrismaAvailable } from '@/lib/prisma'; // Import isPrismaAvailable
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = 'https://edu.2twodragon.com';
 
-    const courses = await prisma.course.findMany({
-        select: {
-            id: true,
-            updatedAt: true,
-        },
-    });
+    let courseEntries: MetadataRoute.Sitemap = [];
+    if (isPrismaAvailable()) { // Check if Prisma is available
+        const courses = await prisma.course.findMany({
+            select: {
+                id: true,
+                updatedAt: true,
+            },
+        });
 
-    const courseEntries: MetadataRoute.Sitemap = courses.map((course) => ({
-        url: `${baseUrl}/courses/${course.id}`,
-        lastModified: course.updatedAt,
-        changeFrequency: 'weekly',
-        priority: 0.9,
-    }));
+        courseEntries = courses.map((course) => ({
+            url: `${baseUrl}/courses/${course.id}`,
+            lastModified: course.updatedAt,
+            changeFrequency: 'weekly',
+            priority: 0.9,
+        }));
+    } else {
+        console.warn('Prisma not available during sitemap generation. Dynamic course entries will be empty.');
+    }
 
     return [
         {

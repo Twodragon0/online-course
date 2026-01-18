@@ -100,6 +100,50 @@ function validateRedirectUrl(url: string | null): string | null {
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
+  // CSRF Protection: Referer header check for POST requests to API routes
+  // This is a heuristic check, not a full CSRF token implementation.
+  // For robust CSRF protection on unauthenticated POSTs, consider a dedicated CSRF token mechanism.
+  if (request.method === 'POST' && request.nextUrl.pathname.startsWith('/api/')) {
+    const requestOrigin = request.nextUrl.origin;
+    const referer = request.headers.get('referer');
+
+    // allowedOrigins is defined later for CORS, but needed here for referer check
+    const allowedOrigins = [
+      process.env.NEXTAUTH_URL,
+      'https://edu.2twodragon.com',
+      'https://twodragon.vercel.app',
+    ].filter(Boolean) as string[];
+
+    if (!referer) {
+      // If referer is missing for a POST request to an API, consider it suspicious
+      console.warn(`[CSRF] Blocking POST to ${request.nextUrl.pathname}: Missing Referer header.`);
+      return NextResponse.json({ error: 'Missing Referer header' }, { status: 403 });
+    }
+
+    try {
+      const refererUrl = new URL(referer);
+      const refererOrigin = refererUrl.origin;
+
+      // Allow if referer matches request origin or is an allowed origin (e.g., for direct API calls from allowed domains)
+      const isOriginAllowed = allowedOrigins.some(allowed => {
+        try {
+          const allowedUrl = new URL(allowed);
+          return refererOrigin === allowedUrl.origin; // Compare full origins
+        } catch {
+          return refererOrigin === allowed;
+        }
+      });
+
+      if (refererOrigin !== requestOrigin && !isOriginAllowed) {
+        console.warn(`[CSRF] Blocking POST to ${request.nextUrl.pathname}: Referer origin mismatch. Request: ${requestOrigin}, Referer: ${refererOrigin}`);
+        return NextResponse.json({ error: 'Invalid Referer header' }, { status: 403 });
+      }
+    } catch (e) {
+      console.warn(`[CSRF] Blocking POST to ${request.nextUrl.pathname}: Invalid Referer URL. Error: ${e}`);
+      return NextResponse.json({ error: 'Invalid Referer header' }, { status: 403 });
+    }
+  }
+
   // SSRF 방지: 리다이렉트 URL 검증
   const redirectUrl = request.nextUrl.searchParams.get('redirect') ||
     request.nextUrl.searchParams.get('callbackUrl') ||

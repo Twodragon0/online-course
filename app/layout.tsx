@@ -8,6 +8,7 @@ import { ChatBot } from "@/components/chat-bot";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
 import Script from "next/script";
+import ErrorBoundary from "@/components/error-boundary"; // Import ErrorBoundary
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -79,11 +80,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Providers>
-            <Navbar />
-            <main className="pt-16">{children}</main>
-            <ChatBot />
-          </Providers>
+          <ErrorBoundary>
+            <Providers>
+              <Navbar />
+              <main className="pt-16">{children}</main>
+              <ChatBot />
+            </Providers>
+          </ErrorBoundary>
         </ThemeProvider>
         <SpeedInsights />
         <Analytics />
